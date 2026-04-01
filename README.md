@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# vyapaar
-For Mahi only
-=======
 # 🚀 VYAPAAR — Professional F&O Trading Terminal
 
 > Python · Flask · Fyers API v3 · PostgreSQL (Render) · SuperTrend · APScheduler
@@ -223,4 +219,3 @@ vyapaar/
     ├── dashboard.html        # Main terminal
     └── scheduler.html        # Job scheduler UI
 ```
->>>>>>> f6e1d74 (Initial commit)
