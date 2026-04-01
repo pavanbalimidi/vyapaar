@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+{% block title %}Scheduler{% endblock %}
+{% block extra_css %}
+<style>
+.sch-grid{display:grid;grid-template-columns:360px 1fr;gap:20px;}
+.job-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px;transition:border-color .2s;}
+.job-card:hover{border-color:var(--border2);}
+.job-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+.job-name{font-family:var(--mono);font-weight:700;font-size:13px;}
+.job-meta{font-size:11px;color:var(--t2);margin-top:2px;}
+.job-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.jstat{background:var(--bg1);border:1px solid var(--border);border-radius:5px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--t1);}
+.jstat span{color:var(--t0);font-weight:700;}
+.form-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:sticky;top:72px;}
+.form-title{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:1px;margin-bottom:18px;}
+.check-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1);margin-bottom:12px;}
+.check-row input{accent-color:var(--acc);}
+.sym-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.sym-tag{background:var(--acc-d);border:1px solid var(--acc)30;color:var(--acc);font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:4px;}
+.sym-tag:hover{background:var(--loss-d);border-color:var(--loss-m);color:var(--loss);}
+.add-sym-row{display:flex;gap:8px;margin-top:8px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div style="font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:1px">⏱ TRADE SCHEDULER</div>
+    <div style="font-size:13px;color:var(--t2);margin-top:4px">Automate F&O trades · Schedule for tomorrow · Equal allocation</div>
+  </div>
+  <div id="jobCount" class="badge badge-blue" style="font-size:13px">Loading…</div>
+</div>
+
+<div class="sch-grid">
+  <!-- LEFT: Jobs list -->
+  <div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--t2);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase">Scheduled Jobs</div>
+    <div id="jobsList">
+      {% if jobs %}
+        {% for j in jobs %}
+        <div class="job-card" id="jcard-{{ j.id }}">
+          <div class="job-header">
+            <div>
+              <div class="job-name">{{ j.job_name }}</div>
+              <div class="job-meta">{{ j.strategy|upper }} · {{ j.scheduled_time.strftime('%H:%M') }} IST
+                {% if j.scheduled_date %} · {{ j.scheduled_date.strftime('%d %b %Y') }}{% else %} · Daily{% endif %}
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              {% if j.status == 'pending' %}<span class="badge badge-blue">PENDING</span>
+              {% elif j.status == 'done' %}<span class="badge badge-green">DONE</span>
+              {% elif j.status == 'running' %}<span class="badge badge-yellow">RUNNING</span>
+              {% elif j.status == 'failed' %}<span class="badge badge-red">FAILED</span>
+              {% elif j.status == 'paused' %}<span class="badge badge-gray">PAUSED</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="job-stats">
+            <div class="jstat">Funds: <span>₹{{ '{:,.0f}'.format(j.allocated_funds|float) }}</span></div>
+            <div class="jstat">Top N: <span>{{ j.top_n }}</span></div>
+            <div class="jstat">Order: <span>{{ j.order_type }}</span></div>
+            <div class="jstat">Product: <span>{{ j.product_type }}</span></div>
+            {% if j.last_run %}<div class="jstat">Last: <span>{{ j.last_run.strftime('%d %b %H:%M') }}</span></div>{% endif %}
+          </div>
+          {% if j.notes and j.status == 'failed' %}
+          <div style="margin-top:8px;font-size:11px;color:var(--loss);font-family:var(--mono)">Error: {{ j.notes[:80] }}</div>
+          {% endif %}
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn btn-secondary btn-sm" onclick="togglePause({{ j.id }})">
+              {{ '▶ Resume' if j.status=='paused' else '⏸ Pause' }}
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteJob({{ j.id }})">✕ Delete</button>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="empty" style="padding:30px 10px"><div class="empty-icon">⏱</div>No jobs yet. Create one →</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RIGHT: Create job form -->
+  <div class="form-card">
+    <div class="form-title">+ CREATE SCHEDULED JOB</div>
+
+    <div class="field-group">
+      <label class="field-label">Job Name</label>
+      <input class="field-input" id="jobName" type="text" placeholder="e.g. Morning Top5 Gainers"/>
+    </div>
+
+    <div class="grid2" style="gap:12px">
+      <div class="field-group">
+        <label class="field-label">Strategy</label>
+        <select class="field-input" id="jobStrategy" onchange="onStratChange()">
+          <option value="supertrend">SuperTrend Auto-Pick</option>
+          <option value="manual">Manual Symbols</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Top N stocks</label>
+        <select class="field-input" id="jobTopN">
+          <option value="3">Top 3</option>
+          <option value="5" selected>Top 5</option>
+          <option value="10">Top 10</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- SUPERTREND description -->
+    <div id="stDesc" style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:12px;color:var(--t1);line-height:1.7;margin-bottom:14px">
+      📊 <strong>SuperTrend Auto-Pick</strong>: At scheduled time, the bot will scan all F&O stocks, rank by % gain, run SuperTrend analysis on each, and BUY only the top N with a <strong>BUY signal</strong>. Funds are split equally.
+    </div>
+
+    <!-- MANUAL SYMBOLS -->
+    <div id="manualSyms" style="display:none;margin-bottom:14px">
+      <label class="field-label">Custom Symbols</label>
+      <div class="add-sym-row">
+        <input class="field-input" id="symInput" placeholder="e.g. RELIANCE" style="text-transform:uppercase"
+               onkeydown="if(event.key==='Enter')addSym()"/>
+        <button class="btn btn-secondary btn-sm" onclick="addSym()">Add</button>
+      </div>
+      <div class="sym-tags" id="symTags"></div>
+    </div>
+
+    <div class="grid2" style="gap:12px">
+      <div class="field-group">
+        <label class="field-label">Schedule Time (IST)</label>
+        <input class="field-input" id="jobTime" type="time" value="09:25"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Schedule Date (blank = daily)</label>
+        <input class="field-input" id="jobDate" type="date"/>
+      </div>
+    </div>
+
+    <div class="grid2" style="gap:12px">
+      <div class="field-group">
+        <label class="field-label">Allocated Funds (₹)</label>
+        <input class="field-input" id="jobFunds" type="number" placeholder="e.g. 100000"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Order Type</label>
+        <select class="field-input" id="jobOtype">
+          <option value="MARKET">MARKET</option>
+          <option value="LIMIT">LIMIT</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Product Type</label>
+      <select class="field-input" id="jobPtype">
+        <option value="INTRADAY">INTRADAY (MIS)</option>
+        <option value="CNC">CNC (Delivery)</option>
+        <option value="MARGIN">MARGIN</option>
+      </select>
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="jobRecurring"/>
+      <label for="jobRecurring">Recurring (repeat daily at scheduled time)</label>
+    </div>
+
+    <div class="warn-box" style="font-size:12px">
+      ⚠ Jobs run automatically. Ensure your Fyers token is valid each morning before market open. Tokens expire at midnight IST.
+    </div>
+
+    <!-- PREVIEW -->
+    <div id="previewBox" style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:12px;font-size:12px;color:var(--t1);line-height:1.8;margin-bottom:14px">
+      <strong style="color:var(--t0);font-family:var(--mono);font-size:11px;letter-spacing:1px">PREVIEW</strong><br/>
+      Fill in the form to see a preview of what this job will do.
+    </div>
+
+    <button class="btn btn-primary" style="width:100%" onclick="createJob()">⏱ Schedule Job</button>
+
+    <!-- QUICK TEMPLATES -->
+    <div style="margin-top:16px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">Quick Templates</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="loadTemplate('morning')">Morning Opener</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadTemplate('midday')">Midday Scan</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadTemplate('next_day')">Next Day Plan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats bar -->
+<div style="margin-top:20px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+  <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;color:var(--t1);margin-bottom:12px">📊 HOW SCHEDULING WORKS</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;font-size:12px;color:var(--t1);line-height:1.7">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--acc);margin-bottom:6px">STEP 1</div>
+      Set a time (e.g. 09:25 AM) and funds. The bot waits until that time.
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--acc);margin-bottom:6px">STEP 2</div>
+      Scans all F&O stocks (9:15-9:25 window), ranks by % gain, runs SuperTrend.
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--acc);margin-bottom:6px">STEP 3</div>
+      Picks Top 5 with BUY signal. Calculates equal allocation from your funds.
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--acc);margin-bottom:6px">STEP 4</div>
+      Places MARKET orders simultaneously with stop-loss at SuperTrend line.
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedSyms = [];
+
+function onStratChange() {
+  const s = document.getElementById('jobStrategy').value;
+  document.getElementById('stDesc').style.display   = s==='supertrend'?'block':'none';
+  document.getElementById('manualSyms').style.display = s==='manual'?'block':'none';
+  updatePreview();
+}
+
+function addSym() {
+  const v = document.getElementById('symInput').value.trim().toUpperCase();
+  if(!v || selectedSyms.includes(v)) return;
+  selectedSyms.push(v);
+  document.getElementById('symInput').value = '';
+  renderSymTags();
+  updatePreview();
+}
+
+function removeSym(sym) {
+  selectedSyms = selectedSyms.filter(s=>s!==sym);
+  renderSymTags();
+  updatePreview();
+}
+
+function renderSymTags() {
+  const el = document.getElementById('symTags');
+  el.innerHTML = selectedSyms.map(s=>`<span class="sym-tag" onclick="removeSym('${s}')">${s} ×</span>`).join('');
+}
+
+function updatePreview() {
+  const name    = document.getElementById('jobName').value || '(unnamed)';
+  const strat   = document.getElementById('jobStrategy').value;
+  const topN    = document.getElementById('jobTopN').value;
+  const time    = document.getElementById('jobTime').value || '--:--';
+  const date    = document.getElementById('jobDate').value;
+  const funds   = parseFloat(document.getElementById('jobFunds').value)||0;
+  const otype   = document.getElementById('jobOtype').value;
+  const ptype   = document.getElementById('jobPtype').value;
+  const recur   = document.getElementById('jobRecurring').checked;
+  const per     = funds && topN ? (funds/parseInt(topN)).toLocaleString('en-IN',{maximumFractionDigits:0}) : '—';
+  const el = document.getElementById('previewBox');
+  el.innerHTML = `
+    <strong style="color:var(--t0);font-family:var(--mono);font-size:11px;letter-spacing:1px">PREVIEW — ${name.toUpperCase()}</strong><br/>
+    At <strong>${time} IST</strong>${date?` on <strong>${date}</strong>`:recur?' <strong>every day</strong>':' (one-time)'}, this job will:<br/>
+    ${strat==='supertrend'
+      ? `→ Scan all NSE F&O stocks · Pick top ${topN} gainers with BUY signal`
+      : `→ Check prices for: <strong>${selectedSyms.join(', ')||'(add symbols)'}</strong>`}
+    <br/>→ Place <strong>${otype} ${ptype}</strong> BUY orders<br/>
+    → Allocate <strong>₹${funds?funds.toLocaleString('en-IN'):'—'}</strong> equally (~₹${per} per stock)
+  `;
+}
+
+['jobName','jobTopN','jobTime','jobDate','jobFunds','jobOtype','jobPtype','jobRecurring'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('change', updatePreview);
+  if(el) el.addEventListener('input', updatePreview);
+});
+
+function loadTemplate(t) {
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const dateStr  = tomorrow.toISOString().slice(0,10);
+  const tpls = {
+    morning:  {name:'Morning Top5 Opener',  time:'09:25', funds:100000, topN:'5', strat:'supertrend', ptype:'INTRADAY', recur:true},
+    midday:   {name:'Midday Momentum Scan',  time:'11:30', funds:50000,  topN:'3', strat:'supertrend', ptype:'INTRADAY', recur:false},
+    next_day: {name:'Next Day Position Plan',time:'09:20', funds:200000, topN:'5', strat:'supertrend', ptype:'CNC',      recur:false, date:dateStr},
+  };
+  const p = tpls[t]; if(!p) return;
+  document.getElementById('jobName').value     = p.name;
+  document.getElementById('jobTime').value     = p.time;
+  document.getElementById('jobFunds').value    = p.funds;
+  document.getElementById('jobTopN').value     = p.topN;
+  document.getElementById('jobStrategy').value = p.strat;
+  document.getElementById('jobPtype').value    = p.ptype;
+  document.getElementById('jobRecurring').checked = p.recur||false;
+  if(p.date) document.getElementById('jobDate').value = p.date;
+  onStratChange();
+  updatePreview();
+}
+
+async function createJob() {
+  const btn = document.querySelector('.btn-primary[onclick="createJob()"]');
+  btn.disabled = true; btn.textContent = 'Scheduling…';
+  const body = {
+    job_name:       document.getElementById('jobName').value,
+    strategy:       document.getElementById('jobStrategy').value,
+    top_n:          parseInt(document.getElementById('jobTopN').value),
+    scheduled_time: document.getElementById('jobTime').value,
+    scheduled_date: document.getElementById('jobDate').value||null,
+    allocated_funds:parseFloat(document.getElementById('jobFunds').value)||50000,
+    order_type:     document.getElementById('jobOtype').value,
+    product_type:   document.getElementById('jobPtype').value,
+    is_recurring:   document.getElementById('jobRecurring').checked,
+    symbols:        selectedSyms,
+  };
+  if(!body.job_name){ alert('Enter a job name'); btn.disabled=false; btn.textContent='⏱ Schedule Job'; return; }
+  try {
+    const r = await fetch('/api/jobs', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if(d.ok) { showToast('✓ '+d.message, 'success'); setTimeout(()=>location.reload(), 1000); }
+    else     { showToast('✗ '+d.error, 'error'); }
+  } catch(e) { showToast('Error: '+e.message, 'error'); }
+  btn.disabled=false; btn.textContent='⏱ Schedule Job';
+}
+
+async function togglePause(id) {
+  const r = await fetch(`/api/jobs/${id}/pause`, {method:'POST'});
+  const d = await r.json();
+  if(d.ok) { showToast('Job '+(d.status==='paused'?'paused':'resumed'), 'info'); setTimeout(()=>location.reload(),800); }
+}
+
+async function deleteJob(id) {
+  if(!confirm('Delete this scheduled job?')) return;
+  const r = await fetch(`/api/jobs/${id}`, {method:'DELETE'});
+  const d = await r.json();
+  if(d.ok) {
+    document.getElementById(`jcard-${id}`)?.remove();
+    showToast('Job deleted', 'info');
+  }
+}
+
+function showToast(msg, type='info') {
+  const colors = {success:'var(--gain)',error:'var(--loss)',info:'var(--acc)'};
+  const w = document.getElementById('tw') || (() => {
+    const d=document.createElement('div');
+    d.id='tw';d.style.cssText='position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px';
+    document.body.appendChild(d);return d;
+  })();
+  const t=document.createElement('div');
+  t.style.cssText=`background:var(--bg2);border:1px solid var(--border2);border-left:3px solid ${colors[type]};border-radius:10px;padding:12px 18px;font-size:13px;min-width:260px;box-shadow:0 8px 32px #0006`;
+  t.textContent=msg; w.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+// Job count
+const jobs = document.querySelectorAll('.job-card').length;
+document.getElementById('jobCount').textContent = `${jobs} job${jobs!==1?'s':''} scheduled`;
+
+// Set tomorrow as default date
+const tmr = new Date(); tmr.setDate(tmr.getDate()+1);
+document.getElementById('jobDate').value = tmr.toISOString().slice(0,10);
+
+updatePreview();
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Register · VYAPAAR</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg0:#080b10;--bg1:#0d1117;--bg2:#131920;--border:#1e2d3d;--border2:#243447;--t0:#e2eaf4;--t1:#8fa8c2;--t2:#4a6480;--acc:#3b8beb;--acc-d:#3b8beb18;--gain:#00e5a0;--gain-d:#00e5a020;--gain-m:#00e5a060;--loss:#ff4757;--loss-d:#ff475720;--loss-m:#ff475760;--mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg0);color:var(--t0);font-family:var(--sans);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.wrap{width:480px;padding:20px;}
+.logo{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:4px;text-align:center;margin-bottom:4px;}
+.logo span{color:var(--acc);}
+.sub{text-align:center;color:var(--t2);font-size:13px;margin-bottom:32px;}
+.card{background:var(--bg1);border:1px solid var(--border2);border-radius:16px;padding:36px;box-shadow:0 32px 80px #00000080;}
+.title{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:1px;margin-bottom:24px;}
+.field{margin-bottom:14px;}
+.label{display:block;font-family:var(--mono);font-size:10px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.input{width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--t0);font-family:var(--mono);font-size:13px;padding:10px 14px;border-radius:8px;outline:none;transition:border-color .2s;}
+.input:focus{border-color:var(--acc);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn{width:100%;background:var(--acc);border:none;color:#fff;font-family:var(--sans);font-size:14px;font-weight:600;padding:12px;border-radius:8px;cursor:pointer;transition:opacity .2s;margin-top:6px;letter-spacing:.3px;}
+.btn:hover{opacity:.85;}
+.foot{text-align:center;margin-top:16px;font-size:13px;color:var(--t2);}
+.foot a{color:var(--acc);}
+.flash{padding:10px 14px;border-radius:7px;font-size:13px;margin-bottom:12px;}
+.flash-error{background:var(--loss-d);color:var(--loss);border:1px solid var(--loss-m);}
+.flash-success{background:var(--gain-d);color:var(--gain);border:1px solid var(--gain-m);}
+.flash-info{background:var(--acc-d);color:var(--acc);border:1px solid var(--acc)30;}
+.divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--t2);font-size:12px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">VYA<span>PAA</span>R</div>
+  <div class="sub">Professional F&O Trading Terminal</div>
+  <div class="card">
+    <div class="title">CREATE ACCOUNT</div>
+    {% with msgs = get_flashed_messages(with_categories=True) %}
+    {% for cat, msg in msgs %}
+    <div class="flash flash-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+    {% endwith %}
+    <form method="POST" action="{{ url_for('auth.register') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}"/>
+      <div class="grid2">
+        <div class="field">
+          <label class="label">Full Name</label>
+          <input class="input" name="full_name" type="text" placeholder="Rahul Sharma" value="{{ form_data.get('full_name','') }}" required/>
+        </div>
+        <div class="field">
+          <label class="label">Phone</label>
+          <input class="input" name="phone" type="tel" placeholder="+91 9876543210" value="{{ form_data.get('phone','') }}"/>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">Email Address</label>
+        <input class="input" name="email" type="email" placeholder="you@example.com" value="{{ form_data.get('email','') }}" required/>
+      </div>
+      <div class="field">
+        <label class="label">Username</label>
+        <input class="input" name="username" type="text" placeholder="traderRahul99" value="{{ form_data.get('username','') }}" required/>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label class="label">Password</label>
+          <input class="input" name="password" type="password" placeholder="Min 8 chars" required/>
+        </div>
+        <div class="field">
+          <label class="label">Confirm Password</label>
+          <input class="input" name="confirm_password" type="password" placeholder="Repeat" required/>
+        </div>
+      </div>
+      <button class="btn" type="submit">Create Account →</button>
+    </form>
+    <div class="foot">Already registered? <a href="{{ url_for('auth.login') }}">Log in here</a></div>
+  </div>
+</div>
+</body>
+</html>

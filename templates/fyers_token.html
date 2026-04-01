@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Connect Fyers{% endblock %}
+{% block content %}
+<div style="max-width:560px">
+  <div style="font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:1px;margin-bottom:20px">CONNECT FYERS — TOKEN</div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="margin-bottom:14px">OPTION A — Automatic Redirect</div>
+    <div style="font-size:13px;color:var(--t1);line-height:1.8;margin-bottom:16px">
+      Click below. You'll be taken to Fyers login. After successful login, you'll be automatically redirected back and your token will be saved.
+    </div>
+    <a href="{{ url_for('fyers.auth_redirect') }}" class="btn btn-success">🔗 Open Fyers Login →</a>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">OPTION B — Manual Paste</div>
+    <div style="font-size:13px;color:var(--t1);line-height:1.8;margin-bottom:16px">
+      After logging in to Fyers, copy the <code style="font-family:var(--mono);color:var(--acc);background:var(--bg2);padding:2px 6px;border-radius:4px">auth_code=xxxxx</code> value from the redirect URL, or paste the full <strong>Access Token</strong> directly.
+    </div>
+    <form method="POST" action="{{ url_for('fyers.manual_token') }}">
+      <div class="field-group">
+        <label class="field-label">Auth Code (from redirect URL)</label>
+        <input class="field-input" name="auth_code" type="text" placeholder="eyJ0eXAiOiJKV1QiLCJhbGci..."/>
+      </div>
+      <div style="text-align:center;color:var(--t2);font-size:12px;padding:8px 0">— OR —</div>
+      <div class="field-group">
+        <label class="field-label">Access Token (if you already have today's token)</label>
+        <input class="field-input" name="access_token" type="password" placeholder="Paste access token directly"/>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Token →</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

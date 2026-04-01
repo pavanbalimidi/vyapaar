@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Fyers Setup{% endblock %}
+{% block content %}
+
+<div style="max-width:720px">
+  <div style="margin-bottom:24px">
+    <div style="font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:1px">FYERS API SETUP</div>
+    <div style="font-size:13px;color:var(--t2);margin-top:4px">Connect your Fyers trading account to start live trading</div>
+  </div>
+
+  <!-- HOW TO CREATE APP -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:16px">📋 HOW TO GET YOUR API CREDENTIALS</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <div style="display:flex;gap:14px;padding:14px;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--acc);background:var(--acc-d);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">1</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Create Fyers API App</div>
+          <div style="font-size:12px;color:var(--t1);line-height:1.7">
+            Go to <a href="https://myapi.fyers.in" target="_blank">myapi.fyers.in</a> → Login with your Fyers account → Click <strong>Dashboard</strong> → Click <strong>Create App</strong>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;padding:14px;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--acc);background:var(--acc-d);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">2</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Set the Redirect URL</div>
+          <div style="font-size:12px;color:var(--t1);line-height:1.7">
+            In the App creation form, set <strong>Redirect URL</strong> to exactly:<br/>
+            <code style="background:var(--bg3);padding:4px 10px;border-radius:4px;font-family:var(--mono);font-size:12px;color:var(--acc)">{{ redirect_uri }}</code><br/>
+            <span style="color:var(--warn);font-size:11px;margin-top:4px;display:block">⚠ This must match EXACTLY — no trailing slash differences</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;padding:14px;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--acc);background:var(--acc-d);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">3</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Enable Permissions</div>
+          <div style="font-size:12px;color:var(--t1);line-height:1.7">
+            Check: <strong>Market Data</strong>, <strong>Order Placement</strong>, <strong>Portfolio</strong>, <strong>Holdings</strong>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;padding:14px;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--acc);background:var(--acc-d);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">4</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Copy App ID and Secret Key</div>
+          <div style="font-size:12px;color:var(--t1);line-height:1.7">
+            After creation you'll see your <strong>App ID</strong> (like <code style="font-family:var(--mono)">XJ12345-100</code>) and <strong>Secret Key</strong>. Paste them below.
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;padding:14px;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--acc);background:var(--acc-d);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">5</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Daily Token Refresh</div>
+          <div style="font-size:12px;color:var(--t1);line-height:1.7">
+            Access tokens expire at midnight IST every day. You'll need to click <strong>Connect Fyers</strong> each morning and log in once to generate a fresh token. The app stores it automatically.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CREDENTIALS FORM -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:20px">⚙ ENTER API CREDENTIALS</div>
+    {% if cred and cred.is_connected %}
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--gain-d);border:1px solid var(--gain-m);border-radius:8px;margin-bottom:16px;font-size:13px;color:var(--gain)">
+      ✅ Connected as <strong>{{ cred.fyers_user_id }}</strong> · Token {{ 'valid' if cred.is_token_valid() else 'EXPIRED — reconnect' }}
+    </div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('fyers.setup') }}">
+      <div class="field-group">
+        <label class="field-label">App ID (Client ID)</label>
+        <input class="field-input" name="app_id" type="text"
+               placeholder="e.g. XJ12345-100"
+               value="{{ cred.app_id if cred else '' }}" required/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Secret Key</label>
+        <input class="field-input" name="secret_key" type="password"
+               placeholder="Paste your secret key"
+               value="{{ cred.secret_key if cred else '' }}" required/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Redirect URL (must match myapi.fyers.in)</label>
+        <input class="field-input" name="redirect_url" type="text"
+               value="{{ cred.redirect_url if cred else redirect_uri }}"/>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button type="submit" class="btn btn-primary">Save & Continue →</button>
+        {% if cred %}
+        <a href="{{ url_for('fyers.auth_redirect') }}" class="btn btn-success">🔗 Connect Fyers (Login)</a>
+        <a href="{{ url_for('fyers.manual_token') }}" class="btn btn-secondary">Paste Auth Code Manually</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  {% if cred and cred.is_connected %}
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">⚡ QUICK ACTIONS</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="{{ url_for('fyers.auth_redirect') }}" class="btn btn-primary">🔄 Refresh Token (Daily Login)</a>
+      <a href="{{ url_for('trading.dashboard') }}" class="btn btn-secondary">→ Go to Dashboard</a>
+      <a href="{{ url_for('fyers.disconnect') }}" class="btn btn-danger btn-sm" onclick="return confirm('Disconnect Fyers?')">↩ Disconnect</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
