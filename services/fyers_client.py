@@ -156,7 +156,20 @@ class FyersClient:
             "range_to":   str(to_ts),
             "cont_flag":  "1",
         }
-        return self._fyers.history(data)
+        raw = self._fyers.history(data)
+
+        # ── Fyers v3 returns candles as list-of-lists ──────────
+        # [[epoch, open, high, low, close, volume], ...]
+        # Convert to t/o/h/l/c/v dict so supertrend.analyse() works
+        if raw and raw.get("s") == "ok" and "candles" in raw:
+            candles = raw["candles"]
+            raw["t"] = [c[0] for c in candles]
+            raw["o"] = [c[1] for c in candles]
+            raw["h"] = [c[2] for c in candles]
+            raw["l"] = [c[3] for c in candles]
+            raw["c"] = [c[4] for c in candles]
+            raw["v"] = [c[5] for c in candles]
+        return raw
 
     # ── ORDERS ───────────────────────────────────────────────
     def place_order(self, symbol: str, side: str, qty: int,
@@ -237,7 +250,7 @@ def generate_auth_url(app_id: str, redirect_uri: str) -> str:
 
 def exchange_auth_code(app_id: str, secret_key: str,
                        auth_code: str,
-                       redirect_uri: str = "http://127.0.0.1:5000/fyers_callback") -> dict:
+                       redirect_uri: str = "https://trade.fyers.in/api-login/redirect-uri/index.html") -> dict:
     """
     Exchange auth_code for access_token using direct HTTPS call.
     redirect_uri MUST exactly match what was registered in the Fyers app.

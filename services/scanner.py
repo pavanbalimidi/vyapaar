@@ -34,21 +34,36 @@ def scan_fo_universe(client: FyersClient, top_n: int = 5,
     for s in FO_STOCKS:
         sym = s["sym"]
         q   = all_quotes.get(sym, {})
-        if not q or not q.get("ltp"):
+        if not q:
             continue
-        pct = q.get("ch_1d", q.get("chp", 0))   # % change field varies by endpoint
+
+        # ── Fyers v3 field names ───────────────────────────────
+        # ltp may be 0 when market is closed — use prev_close as fallback
+        ltp        = float(q.get("ltp") or q.get("prev_close_price") or 0)
+        prev_close = float(q.get("prev_close_price") or 0)
+        if ltp == 0 and prev_close == 0:
+            continue   # truly no data
+
+        # % change: chp is the Fyers v3 field name
+        pct = float(q.get("chp") or q.get("ch_1d") or q.get("change_percentage") or 0)
+        ch  = float(q.get("ch")  or 0)
+
+        # When market closed, compute pct from prev_close if chp missing
+        if pct == 0 and prev_close > 0 and ltp > 0:
+            pct = round((ltp - prev_close) / prev_close * 100, 2)
+
         enriched.append({
             "symbol":    sym,
             "name":      s["name"],
             "lot":       s["lot"],
-            "ltp":       round(float(q.get("ltp", 0)), 2),
-            "open":      round(float(q.get("open_price", 0)), 2),
-            "high":      round(float(q.get("high_price", 0)), 2),
-            "low":       round(float(q.get("low_price", 0)), 2),
-            "prev_close":round(float(q.get("prev_close_price", 0)), 2),
-            "volume":    int(q.get("volume", 0)),
-            "pct_change":round(float(pct), 2),
-            "change":    round(float(q.get("ch", 0)), 2),
+            "ltp":       round(ltp, 2),
+            "open":      round(float(q.get("open_price") or 0), 2),
+            "high":      round(float(q.get("high_price") or 0), 2),
+            "low":       round(float(q.get("low_price")  or 0), 2),
+            "prev_close":round(prev_close, 2),
+            "volume":    int(q.get("volume") or 0),
+            "pct_change":round(pct, 2),
+            "change":    round(ch, 2),
         })
 
     gainers = sorted(enriched, key=lambda x: x["pct_change"], reverse=True)

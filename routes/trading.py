@@ -248,6 +248,22 @@ def api_orders(client):
         return jsonify({"ok": False, "error": str(e)})
 
 
+# ── DEBUG ENDPOINTS (check raw Fyers response) ───────────────
+@trading_bp.route("/api/debug/quote")
+@login_required
+@require_fyers
+def api_debug_quote(client):
+    """Visit /api/debug/quote?sym=WIPRO to see raw Fyers response"""
+    sym = request.args.get("sym", "WIPRO").upper()
+    raw_quote = client.get_quotes([sym])
+    raw_hist  = client.get_historical(sym, resolution="D")
+    return jsonify({
+        "quote_raw":   raw_quote,
+        "hist_keys":   list(raw_hist.keys()) if raw_hist else [],
+        "hist_candles_sample": raw_hist.get("candles", [])[:2] if raw_hist else [],
+        "hist_t_sample":       raw_hist.get("t", [])[:2] if raw_hist else [],
+    })
+
 # ── TRADE HISTORY ─────────────────────────────────────────────
 @trading_bp.route("/api/trades")
 @login_required
