@@ -166,19 +166,31 @@ tbody tr:hover{background:var(--bg2);}
     {% if current_user.is_authenticated %}
     <a class="nav-btn {% if request.endpoint=='trading.dashboard' %}active{% endif %}" href="{{ url_for('trading.dashboard') }}">Dashboard</a>
     <a class="nav-btn {% if request.endpoint=='trading.scheduler_page' %}active{% endif %}" href="{{ url_for('trading.scheduler_page') }}">Scheduler</a>
-    <a class="nav-btn {% if 'fyers' in request.endpoint %}active{% endif %}" href="{{ url_for('fyers.setup') }}">Fyers Setup</a>
+    <a class="nav-btn {% if 'fyers' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('fyers.setup') }}">Fyers</a>
+    <a class="nav-btn {% if 'zerodha' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('zerodha.setup') }}">Zerodha</a>
     {% endif %}
   </div>
   <div class="nav-right">
     {% if current_user.is_authenticated %}
-      {% set cred = current_user.fyers_cred %}
-      {% if cred and cred.is_connected and cred.is_token_valid() %}
-        <span class="conn-badge conn-yes">● FYERS LIVE</span>
-        <small style="color:var(--t2);font-family:var(--mono);font-size:11px;">{{ cred.fyers_user_id }}</small>
-      {% elif cred %}
-        <a href="{{ url_for('fyers.manual_token') }}" class="conn-badge conn-no" style="text-decoration:none">⚠ TOKEN EXPIRED</a>
+      {% set active_broker = current_user.active_broker or 'fyers' %}
+      {% if active_broker == 'zerodha' %}
+        {% set zcred = current_user.zerodha_cred %}
+        {% if zcred and zcred.is_connected and zcred.is_token_valid() %}
+          <span class="conn-badge conn-yes">● ZERODHA LIVE</span>
+          <small style="color:var(--t2);font-family:var(--mono);font-size:11px;">{{ zcred.zerodha_user_id }}</small>
+        {% else %}
+          <a href="{{ url_for('zerodha.setup') }}" class="conn-badge conn-no" style="text-decoration:none">⚠ ZERODHA EXPIRED</a>
+        {% endif %}
       {% else %}
-        <a href="{{ url_for('fyers.setup') }}" class="conn-badge conn-none" style="text-decoration:none">CONNECT FYERS</a>
+        {% set fcred = current_user.fyers_cred %}
+        {% if fcred and fcred.is_connected and fcred.is_token_valid() %}
+          <span class="conn-badge conn-yes">● FYERS LIVE</span>
+          <small style="color:var(--t2);font-family:var(--mono);font-size:11px;">{{ fcred.fyers_user_id }}</small>
+        {% elif fcred %}
+          <a href="{{ url_for('fyers.manual_token') }}" class="conn-badge conn-no" style="text-decoration:none">⚠ FYERS EXPIRED</a>
+        {% else %}
+          <a href="{{ url_for('fyers.setup') }}" class="conn-badge conn-none" style="text-decoration:none">CONNECT BROKER</a>
+        {% endif %}
       {% endif %}
       <span style="color:var(--t2);font-size:12px;">{{ current_user.username }}</span>
       <a class="nav-btn btn-sm" href="{{ url_for('auth.logout') }}">↩ Logout</a>
@@ -213,6 +225,9 @@ tbody tr:hover{background:var(--bg2);}
     <div class="sidebar-title">Account</div>
     <a class="sidebar-link {% if 'fyers' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('fyers.setup') }}">
       <span class="sidebar-icon">⚙</span> Fyers Setup
+    </a>
+    <a class="sidebar-link {% if 'zerodha' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('zerodha.setup') }}">
+      <span class="sidebar-icon">⚙</span> Zerodha Setup
     </a>
   </div>
   {% endif %}

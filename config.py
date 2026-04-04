@@ -17,3 +17,4 @@ class Config:
     TIMEZONE                    = os.getenv("TIMEZONE", "Asia/Kolkata")
     WTF_CSRF_ENABLED            = True
     REMEMBER_COOKIE_DURATION    = 86400 * 7   # 7 days
+    ZERODHA_REDIRECT_URI        = os.getenv("ZERODHA_REDIRECT_URI","http://localhost:5000/zerodha/callback")

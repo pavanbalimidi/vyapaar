@@ -6,8 +6,9 @@ from datetime import datetime, date, time as dtime
 from flask import (Blueprint, render_template, request, jsonify,
                    redirect, url_for, flash)
 from flask_login import login_required, current_user
-from db.models import db, FyersCredential, TradeHistory, ScheduledJob
+from db.models import db, FyersCredential, ZerodhaCredential, TradeHistory, ScheduledJob
 from services.fyers_client import FyersClient, FO_STOCKS
+from services.zerodha_client import ZerodhaClient, ZD_FO_STOCKS
 from services.supertrend import analyse, result_to_dict
 from services.scanner import scan_fo_universe, compute_allocation
 from services.scheduler import schedule_job, unschedule_job
@@ -17,21 +18,31 @@ trading_bp = Blueprint("trading", __name__)
 
 
 # ── HELPERS ───────────────────────────────────────────────────
-def get_client() -> FyersClient | None:
+def get_client():
+    """Returns active broker client — Fyers or Zerodha based on user preference."""
+    broker = getattr(current_user, "active_broker", "fyers") or "fyers"
+
+    if broker == "zerodha":
+        cred = ZerodhaCredential.query.filter_by(user_id=current_user.id).first()
+        if cred and cred.is_connected and cred.access_token and cred.is_token_valid():
+            return ZerodhaClient(cred.api_key, cred.access_token), "zerodha"
+        return None, "zerodha"
+
     cred = FyersCredential.query.filter_by(user_id=current_user.id).first()
-    if not cred or not cred.is_connected or not cred.access_token:
-        return None
-    return FyersClient(cred.app_id, cred.access_token)
+    if cred and cred.is_connected and cred.access_token:
+        return FyersClient(cred.app_id, cred.access_token), "fyers"
+    return None, "fyers"
 
 
 def require_fyers(fn):
     from functools import wraps
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        c = get_client()
-        if not c:
-            return jsonify({"ok": False, "error": "Fyers not connected or token expired. Please reconnect."}), 403
-        return fn(*args, **kwargs, client=c)
+        client, broker = get_client()
+        if not client:
+            return jsonify({"ok": False,
+                            "error": f"{broker.title()} not connected or token expired. Please reconnect."}), 403
+        return fn(*args, **kwargs, client=client)
     return wrapper
 
 
@@ -65,6 +76,11 @@ def dashboard():
 def api_indices(client):
     try:
         data = client.get_index_quotes()
+        if not data:
+            _, broker = get_client()
+            if broker == "zerodha":
+                return jsonify({"ok": False,
+                    "error": "No index data. Check Market quotes permission at developers.kite.trade"})
         return jsonify({"ok": True, "data": data})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
@@ -98,7 +114,10 @@ def api_analyse(client):
     if not symbol:
         return jsonify({"ok": False, "error": "Symbol required"})
     try:
-        hist = client.get_historical(symbol, resolution="D")
+        # Zerodha uses "day", Fyers uses "D"
+        _, broker = get_client()
+        resolution = "day" if broker == "zerodha" else "D"
+        hist = client.get_historical(symbol, resolution=resolution)
         if not hist or hist.get("s") != "ok":
             return jsonify({"ok": False, "error": f"Historical data error: {hist.get('message','')}"})
         result = analyse(symbol, hist, st_period=period, st_mult=mult)
@@ -120,6 +139,12 @@ def api_scan(client):
     try:
         results = scan_fo_universe(client, top_n=top_n,
                                    mode=mode, run_supertrend=run_st)
+        if not results:
+            _, broker = get_client()
+            if broker == "zerodha":
+                return jsonify({"ok": False,
+                    "error": "Scanner returned no data. Ensure Market quotes and data permission "
+                             "is enabled at developers.kite.trade → Edit app → reconnect token."})
         return jsonify({"ok": True, "data": results, "count": len(results)})
     except Exception as e:
         logger.error(f"Scan error: {e}")
@@ -246,6 +271,30 @@ def api_orders(client):
         return jsonify({"ok": True, "data": client.get_orders()})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
+
+
+# ── STATUS / DEBUG ────────────────────────────────────────────
+@trading_bp.route("/api/status")
+@login_required
+def api_status():
+    """Returns broker connection status + raw fund/quote test."""
+    client, broker = get_client()
+    if not client:
+        return jsonify({"ok": False, "broker": broker,
+                        "error": f"{broker} not connected or token expired"})
+    try:
+        # Test a single quote
+        test_quote = client.get_quotes(["WIPRO"])
+        # Test funds
+        funds_raw  = client.get_funds()
+        return jsonify({
+            "ok":          True,
+            "broker":      broker,
+            "quote_test":  test_quote.get("WIPRO", {}),
+            "funds_raw":   funds_raw,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "broker": broker, "error": str(e)})
 
 
 # ── DEBUG ENDPOINTS (check raw Fyers response) ───────────────

@@ -9,6 +9,7 @@ from config import Config
 from db.models import db, User
 from routes.auth import auth_bp
 from routes.fyers_auth import fyers_bp
+from routes.zerodha_auth import zerodha_bp
 from routes.trading import trading_bp
 
 # ── LOGGING ──────────────────────────────────────────────────
@@ -40,6 +41,7 @@ def create_app() -> Flask:
     # ── BLUEPRINTS ────────────────────────────────────────────
     app.register_blueprint(auth_bp)
     app.register_blueprint(fyers_bp)
+    app.register_blueprint(zerodha_bp)
     app.register_blueprint(trading_bp)
 
     # ── ROOT ──────────────────────────────────────────────────

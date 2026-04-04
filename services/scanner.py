@@ -76,15 +76,20 @@ def scan_fo_universe(client: FyersClient, top_n: int = 5,
     else:  # both
         top_list = gainers[:top_n] + losers[:top_n]
 
+    # Detect broker by client type for correct resolution
+    from services.zerodha_client import ZerodhaClient as _ZC
+    resolution = "day" if isinstance(client, _ZC) else "D"
+
     # Optionally run SuperTrend on each
     if run_supertrend:
         for item in top_list:
             try:
-                hist = client.get_historical(item["symbol"], resolution="D")
+                hist = client.get_historical(item["symbol"], resolution=resolution)
                 if hist and hist.get("s") == "ok":
                     result = analyse(item["symbol"], hist)
                     item["supertrend"] = result_to_dict(result)
                 else:
+                    logger.warning(f"ST hist error for {item['symbol']}: {hist}")
                     item["supertrend"] = None
             except Exception as e:
                 logger.warning(f"ST failed for {item['symbol']}: {e}")

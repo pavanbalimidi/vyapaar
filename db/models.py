@@ -22,8 +22,12 @@ class User(UserMixin, db.Model):
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    active_broker= db.Column(db.String(20), default="fyers")   # fyers | zerodha
+
     # relationships
     fyers_cred   = db.relationship("FyersCredential", back_populates="user",
+                                   uselist=False, cascade="all, delete-orphan")
+    zerodha_cred = db.relationship("ZerodhaCredential", back_populates="user",
                                    uselist=False, cascade="all, delete-orphan")
     scheduled_jobs = db.relationship("ScheduledJob", back_populates="user",
                                      cascade="all, delete-orphan")
@@ -131,3 +135,33 @@ class TradeHistory(db.Model):
 
     def __repr__(self):
         return f"<Trade {self.side} {self.symbol} x{self.quantity}>"
+
+# ──────────────────────────────────────────────────────────────
+#  ZERODHA CREDENTIALS  (one per user)
+# ──────────────────────────────────────────────────────────────
+class ZerodhaCredential(db.Model):
+    __tablename__ = "zerodha_credentials"
+
+    id              = db.Column(db.Integer, primary_key=True)
+    user_id         = db.Column(db.Integer, db.ForeignKey("vyapaar_users.id", ondelete="CASCADE"),
+                                unique=True, nullable=False)
+    api_key         = db.Column(db.String(100), nullable=False)
+    api_secret      = db.Column(db.String(255), nullable=False)
+    access_token    = db.Column(db.Text)
+    request_token   = db.Column(db.Text)
+    token_expiry    = db.Column(db.DateTime)
+    zerodha_user_id = db.Column(db.String(100))
+    broker          = db.Column(db.String(20), default="zerodha")
+    is_connected    = db.Column(db.Boolean, default=False)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship("User", back_populates="zerodha_cred")
+
+    def is_token_valid(self):
+        if not self.access_token or not self.token_expiry:
+            return False
+        return datetime.utcnow() < self.token_expiry
+
+    def __repr__(self):
+        return f"<ZerodhaCred user={self.user_id} key={self.api_key[:6]}...>"

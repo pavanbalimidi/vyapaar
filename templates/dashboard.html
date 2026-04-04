@@ -2,9 +2,6 @@
 {% block title %}Dashboard{% endblock %}
 {% block extra_css %}
 <style>
-.section-title{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--t1);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
-.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
-.index-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
 .idx-card{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
 .idx-name{font-size:10px;color:var(--t2);font-family:var(--mono);letter-spacing:.5px;margin-bottom:4px;}
 .idx-price{font-family:var(--mono);font-size:16px;font-weight:700;}
@@ -13,136 +10,148 @@
 .fund-box{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:12px 16px;flex:1;min-width:140px;}
 .fund-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);letter-spacing:1.5px;text-transform:uppercase;}
 .fund-val{font-family:var(--mono);font-size:18px;font-weight:700;margin-top:4px;}
-.section-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
 .tbl-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);}
 .tbl-title{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;}
-.action-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
-.ticker{font-family:var(--mono);font-size:11px;}
-/* SuperTrend panel */
 .st-panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;}
-.st-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.st-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
 .st-body{padding:16px;}
 .st-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
 .st-stat{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;}
 .st-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);letter-spacing:1.5px;text-transform:uppercase;}
 .st-val{font-family:var(--mono);font-size:14px;font-weight:700;margin-top:3px;}
 .reason-list{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:12px 14px;font-size:12px;line-height:2;color:var(--t1);}
-/* Order confirm modal rows */
 .mrow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
 .mrow:last-of-type{border:none;}
 .mkey{font-size:12px;color:var(--t2);}
 .mval{font-family:var(--mono);font-size:13px;font-weight:700;}
-/* Scanner */
 .scan-wrap{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;}
 .scan-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;}
 .filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .fsel{background:var(--bg2);border:1px solid var(--border2);color:var(--t0);font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:6px;outline:none;cursor:pointer;}
-.fsel:focus{border-color:var(--acc);}
 .loading-overlay{display:flex;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--t2);font-family:var(--mono);font-size:12px;}
-/* Positions */
 .pos-table-wrap{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;}
+.broker-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap;}
+.broker-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-family:var(--mono);font-size:11px;font-weight:700;}
+.broker-fyers{background:#3b8beb20;color:var(--acc);border:1px solid #3b8beb40;}
+.broker-zerodha{background:#387ed120;color:#387ed1;border:1px solid #387ed140;}
+.index-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
 </style>
 {% endblock %}
 
 {% block content %}
+{% set active_broker = current_user.active_broker or "fyers" %}
+{% set fcred = current_user.fyers_cred %}
+{% set zcred = current_user.zerodha_cred %}
 
-<!-- ── CONNECTION WARNING ──────────────────────────────── -->
-{% set cred = current_user.fyers_cred %}
-{% if not cred %}
-<div class="warn-box" style="margin-bottom:20px">
-  ⚠ Fyers account not set up. <a href="{{ url_for('fyers.setup') }}">Set up Fyers API →</a>
+<!-- BROKER BAR -->
+<div class="broker-bar">
+  <span style="font-size:11px;color:var(--t2);font-family:var(--mono)">ACTIVE BROKER</span>
+  {% if active_broker == "zerodha" %}
+    <span class="broker-pill broker-zerodha">&#9679; ZERODHA{% if zcred and zcred.zerodha_user_id %} &middot; {{ zcred.zerodha_user_id }}{% endif %}</span>
+    {% if not zcred or not zcred.is_connected or not zcred.is_token_valid() %}
+      <span style="font-size:12px;color:var(--loss)">&#9888; Token expired &mdash; <a href="{{ url_for('zerodha.auth_redirect') }}">Reconnect</a></span>
+    {% else %}
+      <span style="font-size:12px;color:var(--gain)">&#10003; Connected</span>
+    {% endif %}
+  {% else %}
+    <span class="broker-pill broker-fyers">&#9679; FYERS{% if fcred and fcred.fyers_user_id %} &middot; {{ fcred.fyers_user_id }}{% endif %}</span>
+    {% if not fcred or not fcred.is_connected or not fcred.is_token_valid() %}
+      <span style="font-size:12px;color:var(--loss)">&#9888; Token expired &mdash; <a href="{{ url_for('fyers.auth_redirect') }}">Reconnect</a></span>
+    {% else %}
+      <span style="font-size:12px;color:var(--gain)">&#10003; Connected</span>
+    {% endif %}
+  {% endif %}
+  <div style="margin-left:auto;display:flex;gap:6px">
+    <form method="POST" action="{{ url_for('zerodha.switch_broker') }}" style="display:inline">
+      <input type="hidden" name="broker" value="fyers"/>
+      <button type="submit" class="btn btn-sm {% if active_broker=='fyers' %}btn-primary{% else %}btn-secondary{% endif %}">Fyers</button>
+    </form>
+    <form method="POST" action="{{ url_for('zerodha.switch_broker') }}" style="display:inline">
+      <input type="hidden" name="broker" value="zerodha"/>
+      <button type="submit" class="btn btn-sm {% if active_broker=='zerodha' %}btn-primary{% else %}btn-secondary{% endif %}">Zerodha</button>
+    </form>
+    <a href="{{ url_for('fyers.setup') if active_broker=='fyers' else url_for('zerodha.setup') }}" class="btn btn-secondary btn-sm">Setup</a>
+  </div>
 </div>
-{% elif not cred.is_connected or not cred.is_token_valid() %}
-<div class="warn-box" style="margin-bottom:20px">
-  ⚠ Fyers token is {{ 'expired' if cred.access_token else 'not generated' }}.
-  <a href="{{ url_for('fyers.auth_redirect') }}">Reconnect now →</a>
-  (tokens expire daily at midnight IST)
-</div>
-{% endif %}
 
-<!-- ── INDICES ─────────────────────────────────────────── -->
-<div class="section-title" id="indices">Indices <span id="mkt-status" class="badge badge-gray" style="font-size:9px">CHECKING…</span></div>
+<!-- API STATUS (shown only on error) -->
+<div id="apiStatusBar" style="display:none;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;font-family:var(--mono);background:var(--loss-d);border:1px solid var(--loss-m);color:var(--loss)"></div>
+
+<!-- INDICES -->
+<div style="font-family:var(--mono);font-size:11px;color:var(--t1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:10px">
+  Indices <span id="mkt-status" class="badge badge-gray" style="font-size:9px">--</span>
+</div>
 <div class="index-grid">
-  {% for name in ['NIFTY 50','BANK NIFTY','FIN NIFTY','MIDCAP NIFTY','SENSEX'] %}
+  {% for name in ["NIFTY 50","BANK NIFTY","FIN NIFTY","MIDCAP NIFTY","SENSEX"] %}
   <div class="idx-card">
     <div class="idx-name">{{ name }}</div>
-    <div class="idx-price neu" id="idx-{{ loop.index0 }}-price">—</div>
-    <div class="idx-chg neu"   id="idx-{{ loop.index0 }}-chg">—</div>
+    <div class="idx-price neu" id="idx-{{ loop.index0 }}-price">--</div>
+    <div class="idx-chg neu" id="idx-{{ loop.index0 }}-chg">--</div>
   </div>
   {% endfor %}
 </div>
 
-<!-- ── FUNDS ──────────────────────────────────────────── -->
-<div class="fund-row" id="fundRow">
-  <div class="fund-box"><div class="fund-lbl">Available Funds</div><div class="fund-val" id="fund-avail">—</div></div>
-  <div class="fund-box"><div class="fund-lbl">Used Margin</div><div class="fund-val" id="fund-used">—</div></div>
-  <div class="fund-box"><div class="fund-lbl">Total Balance</div><div class="fund-val" id="fund-total">—</div></div>
-  <div class="fund-box"><div class="fund-lbl">Today P&L</div><div class="fund-val" id="fund-pnl">—</div></div>
-  <div class="fund-box"><div class="fund-lbl">Open Positions</div><div class="fund-val" id="pos-count">—</div></div>
+<!-- FUNDS -->
+<div class="fund-row">
+  <div class="fund-box"><div class="fund-lbl">Available</div><div class="fund-val" id="fund-avail">--</div></div>
+  <div class="fund-box"><div class="fund-lbl">Used Margin</div><div class="fund-val" id="fund-used">--</div></div>
+  <div class="fund-box"><div class="fund-lbl">Total</div><div class="fund-val" id="fund-total">--</div></div>
+  <div class="fund-box"><div class="fund-lbl">Today P&amp;L</div><div class="fund-val" id="fund-pnl">--</div></div>
+  <div class="fund-box"><div class="fund-lbl">Positions</div><div class="fund-val" id="pos-count">--</div></div>
 </div>
 
-<!-- ── SCANNER ────────────────────────────────────────── -->
-<div id="scanner" class="scan-wrap">
+<!-- SCANNER -->
+<div class="scan-wrap" id="scanner">
   <div class="scan-header">
-    <div class="tbl-title" style="font-size:13px">▦ F&O SCANNER — Top Gainers / Losers</div>
+    <div class="tbl-title" style="font-size:13px">F&amp;O SCANNER</div>
     <div class="filter-row">
-      <select class="fsel" id="scanMode"><option value="gainers">▲ Gainers</option><option value="losers">▼ Losers</option></select>
+      <select class="fsel" id="scanMode"><option value="gainers">Gainers</option><option value="losers">Losers</option></select>
       <select class="fsel" id="scanTop"><option value="5">Top 5</option><option value="10" selected>Top 10</option><option value="20">Top 20</option></select>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);cursor:pointer">
         <input type="checkbox" id="runST" checked style="accent-color:var(--acc)"/> SuperTrend
       </label>
-      <button class="btn btn-primary btn-sm" onclick="runScan()">▶ Scan</button>
+      <button class="btn btn-primary btn-sm" onclick="runScan()">Scan</button>
       <button class="btn btn-secondary btn-sm" onclick="bulkAlloc()">Allocate Top 5</button>
     </div>
   </div>
-  <div id="scanBody">
-    <div class="loading-overlay"><span class="spinner"></span> Click Scan to load F&O universe</div>
-  </div>
+  <div id="scanBody"><div class="loading-overlay">Click Scan to start</div></div>
 </div>
 
-<!-- ── SUPERTREND ANALYSER ────────────────────────────── -->
-<div id="supertrend" class="st-panel">
+<!-- SUPERTREND -->
+<div class="st-panel" id="supertrend">
   <div class="st-header">
-    <div class="card-title">△ SUPERTREND ANALYSER</div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <input id="stSymbol" class="field-input" style="width:150px;padding:6px 10px;font-size:12px" placeholder="e.g. RELIANCE" onkeydown="if(event.key==='Enter')runST()"/>
-      <select class="fsel" id="stPeriod"><option value="10" selected>Period 10</option><option value="7">Period 7</option><option value="14">Period 14</option></select>
-      <select class="fsel" id="stMult"><option value="3" selected>Mult 3.0</option><option value="2">Mult 2.0</option><option value="2.5">Mult 2.5</option></select>
+    <div class="card-title">SUPERTREND ANALYSER</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="stSymbol" class="field-input" style="width:140px;padding:6px 10px;font-size:12px" placeholder="e.g. WIPRO"/>
+      <select class="fsel" id="stPeriod"><option value="10" selected>Period 10</option><option value="7">7</option><option value="14">14</option></select>
+      <select class="fsel" id="stMult"><option value="3" selected>Mult 3.0</option><option value="2">2.0</option><option value="2.5">2.5</option></select>
       <button class="btn btn-primary btn-sm" onclick="runST()">Analyse</button>
     </div>
   </div>
-  <div class="st-body" id="stBody">
-    <div class="empty"><div class="empty-icon">△</div>Enter a symbol and click Analyse</div>
-  </div>
+  <div class="st-body" id="stBody"><div class="empty"><div class="empty-icon">&#9651;</div>Enter a symbol and click Analyse</div></div>
 </div>
 
-<!-- ── OPEN POSITIONS ─────────────────────────────────── -->
-<div id="positions" class="pos-table-wrap">
-  <div class="tbl-header">
-    <div class="tbl-title">◈ OPEN POSITIONS</div>
-    <button class="btn btn-secondary btn-sm" onclick="loadPositions()">↻ Refresh</button>
-  </div>
-  <div id="posBody">
-    <div class="loading-overlay"><span class="spinner"></span> Loading positions…</div>
-  </div>
-</div>
-
-<!-- ── TODAY'S ORDERS ─────────────────────────────────── -->
-<div id="orders" class="pos-table-wrap">
-  <div class="tbl-header">
-    <div class="tbl-title">↕ TODAY'S ORDERS</div>
-    <button class="btn btn-secondary btn-sm" onclick="loadOrders()">↻ Refresh</button>
-  </div>
-  <div id="ordersBody">
-    <div class="loading-overlay">Click Refresh to load today's orders</div>
-  </div>
-</div>
-
-<!-- ── RECENT TRADES (DB) ─────────────────────────────── -->
+<!-- POSITIONS -->
 <div class="pos-table-wrap">
   <div class="tbl-header">
-    <div class="tbl-title">📋 RECENT TRADES (from DB)</div>
+    <div class="tbl-title">OPEN POSITIONS</div>
+    <button class="btn btn-secondary btn-sm" onclick="loadPositions()">Refresh</button>
   </div>
+  <div id="posBody"><div class="loading-overlay"><span class="spinner"></span> Loading...</div></div>
+</div>
+
+<!-- ORDERS -->
+<div class="pos-table-wrap">
+  <div class="tbl-header">
+    <div class="tbl-title">TODAY'S ORDERS</div>
+    <button class="btn btn-secondary btn-sm" onclick="loadOrders()">Refresh</button>
+  </div>
+  <div id="ordersBody"><div class="loading-overlay">Click Refresh</div></div>
+</div>
+
+<!-- DB TRADES -->
+<div class="pos-table-wrap">
+  <div class="tbl-header"><div class="tbl-title">RECENT TRADES (DB)</div></div>
   {% if recent_trades %}
   <table>
     <thead><tr><th>#</th><th>Symbol</th><th>Side</th><th class="r">Qty</th><th class="r">Price</th><th>Strategy</th><th>Status</th><th>Time</th></tr></thead>
@@ -153,39 +162,38 @@
       <td class="mono bold">{{ t.symbol }}</td>
       <td><span class="sig {{ 'sig-buy' if t.side=='BUY' else 'sig-sell' }}">{{ t.side }}</span></td>
       <td class="r mono">{{ t.quantity }}</td>
-      <td class="r mono">{{ '%.2f'|format(t.price|float) }}</td>
-      <td class="mono neu" style="font-size:11px">{{ t.strategy or '—' }}</td>
-      <td>
-        {% if t.status == 'PLACED' %}<span class="badge badge-green">PLACED</span>
-        {% elif t.status == 'FILLED' %}<span class="badge badge-blue">FILLED</span>
-        {% elif t.status == 'REJECTED' %}<span class="badge badge-red">REJECTED</span>
-        {% else %}<span class="badge badge-gray">{{ t.status }}</span>{% endif %}
-      </td>
+      <td class="r mono">{{ "%.2f"|format(t.price|float) }}</td>
+      <td class="mono neu" style="font-size:11px">{{ t.strategy or "--" }}</td>
+      <td><span class="badge {{ 'badge-green' if t.status in ('PLACED','FILLED') else 'badge-red' if t.status=='REJECTED' else 'badge-gray' }}">{{ t.status }}</span></td>
       <td class="mono neu" style="font-size:11px">{{ t.created_at.strftime('%d %b %H:%M') }}</td>
     </tr>
     {% endfor %}
     </tbody>
   </table>
   {% else %}
-  <div class="empty"><div class="empty-icon">📋</div>No trades yet</div>
+  <div class="empty">No trades yet</div>
   {% endif %}
 </div>
 
-<!-- ── ORDER MODAL ────────────────────────────────────── -->
+<!-- ORDER MODAL -->
 <div class="modal-overlay" id="orderModal">
   <div class="modal-card" style="width:500px">
     <div class="modal-title" id="orderModalTitle">Confirm Order</div>
-    <div class="modal-sub" id="orderModalSub">Review details carefully before placing</div>
-    <div id="orderRows" style="margin-bottom:6px"></div>
+    <div class="modal-sub" id="orderModalSub"></div>
+    <div id="orderRows"></div>
     <div class="field-group" style="margin-top:12px">
       <label class="field-label">Quantity (shares)</label>
       <input class="field-input" id="orderQty" type="number" min="1" value="1" oninput="updateOrderQty()"/>
     </div>
     <div class="field-group">
       <label class="field-label">Product Type</label>
-      <select class="field-input" id="orderPtype"><option value="INTRADAY">INTRADAY (MIS)</option><option value="CNC">CNC (Delivery)</option><option value="MARGIN">MARGIN</option></select>
+      <select class="field-input" id="orderPtype">
+        <option value="INTRADAY">INTRADAY / MIS</option>
+        <option value="CNC">CNC (Delivery)</option>
+        <option value="MARGIN">MARGIN / NRML</option>
+      </select>
     </div>
-    <div class="warn-box" id="orderWarn" style="font-size:12px"></div>
+    <div class="warn-box" id="orderWarn" style="font-size:12px;display:none"></div>
     <div id="orderApproxVal" class="mono" style="font-size:12px;color:var(--t2);margin-bottom:14px"></div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-secondary" style="flex:1" onclick="closeModal('orderModal')">Cancel</button>
@@ -194,400 +202,470 @@
   </div>
 </div>
 
-<!-- ── BULK ALLOCATION MODAL ──────────────────────────── -->
+<!-- BULK MODAL -->
 <div class="modal-overlay" id="bulkModal">
-  <div class="modal-card" style="width:580px;max-height:90vh;overflow-y:auto">
+  <div class="modal-card" style="width:560px;max-height:90vh;overflow-y:auto">
     <div class="modal-title">Equal Fund Allocation</div>
-    <div class="modal-sub">Top 5 scanner results — funds distributed equally</div>
+    <div class="modal-sub">Top 5 results split equally</div>
     <div class="field-group">
-      <label class="field-label">Total Funds to Allocate (₹)</label>
+      <label class="field-label">Total Funds (Rs.)</label>
       <div style="display:flex;gap:8px">
-        <input class="field-input" id="bulkFunds" type="number" placeholder="e.g. 100000" style="flex:1"/>
-        <select class="field-input" style="width:160px" id="bulkPtype"><option value="INTRADAY">INTRADAY</option><option value="CNC">CNC</option></select>
+        <input class="field-input" id="bulkFunds" type="number" placeholder="100000" style="flex:1"/>
+        <select class="field-input" style="width:150px" id="bulkPtype">
+          <option value="INTRADAY">INTRADAY</option>
+          <option value="CNC">CNC</option>
+          <option value="MARGIN">MARGIN</option>
+        </select>
         <button class="btn btn-secondary btn-sm" onclick="calcBulk()">Calculate</button>
       </div>
     </div>
     <div id="bulkAllocGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
     <div id="bulkSummary" class="mono" style="font-size:12px;color:var(--t2);margin-bottom:12px"></div>
-    <div class="warn-box">⚠ This will place <strong id="bulkCount">N</strong> MARKET orders simultaneously. Ensure margins are available. Orders are final once confirmed.</div>
+    <div class="warn-box">Places <strong id="bulkCount">5</strong> MARKET orders. Confirm only if margins are sufficient.</div>
     <div style="display:flex;gap:10px;margin-top:12px">
       <button class="btn btn-secondary" style="flex:1" onclick="closeModal('bulkModal')">Cancel</button>
-      <button class="btn btn-success" style="flex:2" onclick="confirmBulk()">✓ Confirm & Place All Orders</button>
+      <button class="btn btn-success" style="flex:2" onclick="confirmBulk()">Confirm All Orders</button>
     </div>
   </div>
 </div>
 
 {% endblock %}
-
 {% block scripts %}
 <script>
-// ═══════════════════════════════════════════════
-//  VYAPAAR DASHBOARD JS
-// ═══════════════════════════════════════════════
+// ── CONFIG ──────────────────────────────────────────────────────
+const BROKER = {{ active_broker | tojson }};
 
-const fmtN  = n => parseFloat(n||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
-const fmtV  = v => v>=1e7?(v/1e7).toFixed(1)+'Cr':v>=1e5?(v/1e5).toFixed(1)+'L':v>=1e3?(v/1e3).toFixed(1)+'K':String(v);
-const cls   = p => p>0?'up':p<0?'dn':'neu';
+// ── FORMATTERS ──────────────────────────────────────────────────
+const fmtN = n => parseFloat(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtV = v => v>=1e7?(v/1e7).toFixed(1)+'Cr':v>=1e5?(v/1e5).toFixed(1)+'L':v>=1e3?(v/1e3).toFixed(1)+'K':String(v||0);
+const cls  = p => parseFloat(p)>0?'up':parseFloat(p)<0?'dn':'neu';
 
+// ── STATE ───────────────────────────────────────────────────────
+// Store scan data by index — avoids inline JSON/regex quoting issues
 let scanData = [];
 let orderCtx = {};
 
-// ── CLOCK + MARKET STATUS ──────────────────────
-(function tick() {
-  const now = new Date();
-  const h=now.getHours(), m=now.getMinutes();
-  const open = (h>9||(h===9&&m>=15))&&(h<15||(h===15&&m<=30));
+// ── CLOCK ───────────────────────────────────────────────────────
+setInterval(function(){
+  const now = new Date(), h = now.getHours(), m = now.getMinutes();
+  const open = (h>9||(h===9&&m>=15)) && (h<15||(h===15&&m<=30));
   const el = document.getElementById('mkt-status');
-  if(el){el.textContent=open?'NSE OPEN':'NSE CLOSED';el.className='badge '+(open?'badge-green':'badge-red');}
-  setTimeout(tick, 10000);
-})();
+  if(el){ el.textContent = open ? 'NSE OPEN' : 'NSE CLOSED'; el.className = 'badge '+(open?'badge-green':'badge-red'); }
+}, 5000);
 
-// ── INDICES ────────────────────────────────────
-async function loadIndices() {
-  try {
+// ── STATUS CHECK ────────────────────────────────────────────────
+async function loadStatus(){
+  try{
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    const bar = document.getElementById('apiStatusBar');
+    if(!d.ok){
+      bar.style.display = 'block';
+      bar.textContent = 'Broker API error (' + d.broker + '): ' + d.error;
+    } else {
+      bar.style.display = 'none';
+      const q = d.quote_test || {};
+      if(q.ltp) showToast(BROKER.toUpperCase() + ' connected. WIPRO @ Rs.' + fmtN(q.ltp), 'info');
+    }
+  } catch(e){ console.warn('Status check failed:', e); }
+}
+
+// ── INDICES ─────────────────────────────────────────────────────
+async function loadIndices(){
+  try{
     const r = await fetch('/api/indices');
     const d = await r.json();
-    if (!d.ok) return;
+    if(!d.ok){ console.warn('Indices error:', d.error); return; }
     const names = ['NIFTY 50','BANK NIFTY','FIN NIFTY','MIDCAP NIFTY','SENSEX'];
-    names.forEach((n, i) => {
+    names.forEach(function(n, i){
       const q = d.data[n] || {};
-      const price = q.ltp || 0;
-      const pct   = q.ch_1d || q.chp || 0;
+      const price = parseFloat(q.ltp || 0);
+      const pct   = parseFloat(q.chp || q.ch_1d || 0);
       const c = cls(pct);
-      const pe = document.getElementById(`idx-${i}-price`);
-      const ce = document.getElementById(`idx-${i}-chg`);
-      if(pe){ pe.textContent = fmtN(price); pe.className = `idx-price ${c}`; }
-      if(ce){ ce.textContent = `${pct>0?'+':''}${parseFloat(pct).toFixed(2)}%`; ce.className = `idx-chg ${c}`; }
+      const pe = document.getElementById('idx-'+i+'-price');
+      const ce = document.getElementById('idx-'+i+'-chg');
+      if(pe){ pe.textContent = fmtN(price); pe.className = 'idx-price ' + c; }
+      if(ce){ ce.textContent = (pct>0?'+':'') + pct.toFixed(2) + '%'; ce.className = 'idx-chg ' + c; }
     });
-  } catch(e) { console.warn('Indices load failed:', e); }
+  } catch(e){ console.warn('Indices:', e); }
 }
 
-// ── FUNDS ──────────────────────────────────────
-async function loadFunds() {
-  try {
+// ── FUNDS ────────────────────────────────────────────────────────
+async function loadFunds(){
+  try{
     const r = await fetch('/api/funds');
     const d = await r.json();
-    if (!d.ok) return;
-    const fd = d.data?.fund_limit || [];
-    const avail = fd.find(x=>x.title==='Available Balance') || fd[0] || {};
-    const used  = fd.find(x=>x.title==='Utilised Amount')   || {};
-    const total = fd.find(x=>x.title==='Total Balance')     || {};
-    setText('fund-avail', '₹ '+fmtN(avail.equityAmount||0));
-    setText('fund-used',  '₹ '+fmtN(used.equityAmount||0));
-    setText('fund-total', '₹ '+fmtN(total.equityAmount||0));
-  } catch(e) {}
+    if(!d.ok){ console.warn('Funds error:', d.error); return; }
+    let avail=0, used=0, total=0;
+    if(BROKER === 'zerodha'){
+      const eq = (d.data && d.data.equity) || (d.data && d.data.data && d.data.data.equity) || {};
+      avail = (eq.available && eq.available.live_balance) || eq.net || 0;
+      used  = (eq.utilised  && eq.utilised.debits)        || 0;
+      total = parseFloat(avail) + parseFloat(used);
+    } else {
+      const fd = (d.data && d.data.fund_limit) || [];
+      const find = function(t){ return fd.find(function(x){ return x.title===t; }) || {}; };
+      avail = find('Available Balance').equityAmount || (fd[0] && fd[0].equityAmount) || 0;
+      used  = find('Utilised Amount').equityAmount   || 0;
+      total = find('Total Balance').equityAmount     || 0;
+    }
+    setText('fund-avail', 'Rs. ' + fmtN(avail));
+    setText('fund-used',  'Rs. ' + fmtN(used));
+    setText('fund-total', 'Rs. ' + fmtN(total));
+  } catch(e){ console.warn('Funds:', e); }
 }
 
-async function loadPositions() {
+// ── POSITIONS ────────────────────────────────────────────────────
+async function loadPositions(){
   const el = document.getElementById('posBody');
-  el.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading…</div>';
-  try {
+  el.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading...</div>';
+  try{
     const r = await fetch('/api/positions');
     const d = await r.json();
-    if(!d.ok || !d.data?.netPositions?.length) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">◈</div>No open positions</div>';
-      setText('pos-count', '0');
-      return;
+    if(!d.ok){ el.innerHTML = '<div class="empty">Error: ' + d.error + '</div>'; return; }
+    let positions = [];
+    if(BROKER === 'zerodha'){
+      const raw = (d.data && d.data.net) || (d.data && d.data.data && d.data.data.net) || [];
+      positions = raw.filter(function(p){ return p.quantity !== 0; }).map(function(p){
+        return { symbol: p.tradingsymbol, qty: p.quantity,
+                 avg: p.average_price, ltp: p.last_price, pnl: p.pnl || 0 };
+      });
+    } else {
+      const raw = (d.data && d.data.netPositions) || [];
+      positions = raw.filter(function(p){ return p.netQty !== 0; }).map(function(p){
+        return { symbol: (p.symbol||'').replace('NSE:','').replace('-EQ',''),
+                 qty: p.netQty, avg: p.buyAvg, ltp: p.ltp, pnl: p.pl_1d || 0 };
+      });
     }
-    const pos = d.data.netPositions;
-    setText('pos-count', String(pos.length));
-    let pnl=0; pos.forEach(p=>pnl+=p.pl_1d||0);
-    const pnlEl=document.getElementById('fund-pnl');
-    if(pnlEl){pnlEl.textContent='₹ '+fmtN(pnl);pnlEl.className='fund-val '+(pnl>=0?'up':'dn');}
-    el.innerHTML = `<table>
-      <thead><tr><th>Symbol</th><th class="r">Qty</th><th class="r">Avg Price</th><th class="r">LTP</th><th class="r">P&L</th><th class="r">%</th><th>Action</th></tr></thead>
-      <tbody>${pos.map(p=>{
-        const pl=p.pl_1d||0; const pct=(p.ltp-p.buyAvg)/p.buyAvg*100||0;
-        return`<tr>
-          <td class="mono bold">${p.symbol?.replace('NSE:','').replace('-EQ','')}</td>
-          <td class="r mono">${p.netQty}</td>
-          <td class="r mono">${fmtN(p.buyAvg)}</td>
-          <td class="r mono">${fmtN(p.ltp)}</td>
-          <td class="r mono ${pl>=0?'up':'dn'}">${pl>=0?'+':''}${fmtN(pl)}</td>
-          <td class="r mono ${cls(pct)}">${pct>0?'+':''}${pct.toFixed(2)}%</td>
-          <td><button class="btn btn-danger btn-sm" onclick="openOrderModal('${p.symbol}','SELL',${p.netQty},${p.ltp},{})">SELL</button></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
-  } catch(e) { el.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+    setText('pos-count', String(positions.length));
+    if(!positions.length){ el.innerHTML = '<div class="empty">No open positions</div>'; return; }
+    const totalPnl = positions.reduce(function(a,p){ return a + parseFloat(p.pnl||0); }, 0);
+    const pe = document.getElementById('fund-pnl');
+    if(pe){ pe.textContent = 'Rs. ' + fmtN(totalPnl); pe.className = 'fund-val ' + (totalPnl>=0?'up':'dn'); }
+    let rows = '';
+    positions.forEach(function(p){
+      const pnl = parseFloat(p.pnl||0);
+      const pct = p.avg > 0 ? (p.ltp - p.avg) / p.avg * 100 : 0;
+      rows += '<tr>' +
+        '<td class="mono bold">' + p.symbol + '</td>' +
+        '<td class="r mono">' + p.qty + '</td>' +
+        '<td class="r mono">' + fmtN(p.avg) + '</td>' +
+        '<td class="r mono">' + fmtN(p.ltp) + '</td>' +
+        '<td class="r mono ' + (pnl>=0?'up':'dn') + '">' + fmtN(pnl) + '</td>' +
+        '<td class="r mono ' + cls(pct) + '">' + pct.toFixed(2) + '%</td>' +
+        '<td><button class="btn btn-danger btn-sm" onclick="openSellModal(\'' + p.symbol + '\',' + Math.abs(p.qty) + ',' + p.ltp + ')">SELL</button></td>' +
+        '</tr>';
+    });
+    el.innerHTML = '<table><thead><tr><th>Symbol</th><th class="r">Qty</th><th class="r">Avg</th><th class="r">LTP</th><th class="r">P&amp;L</th><th class="r">%</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  } catch(e){ el.innerHTML = '<div class="empty">' + e.message + '</div>'; }
 }
 
-async function loadOrders() {
+// ── ORDERS ───────────────────────────────────────────────────────
+async function loadOrders(){
   const el = document.getElementById('ordersBody');
-  el.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading…</div>';
-  try {
+  el.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading...</div>';
+  try{
     const r = await fetch('/api/orders');
     const d = await r.json();
-    if(!d.ok || !d.data?.orderBook?.length) {
-      el.innerHTML = '<div class="empty">No orders today</div>'; return;
+    if(!d.ok){ el.innerHTML = '<div class="empty">Error loading orders</div>'; return; }
+    let orders = [];
+    if(BROKER === 'zerodha'){
+      const raw = (d.data && d.data.data) || d.data || [];
+      if(Array.isArray(raw)) orders = raw.map(function(o){
+        return { time: o.order_timestamp||'--', symbol: o.tradingsymbol,
+                 side: o.transaction_type, qty: o.quantity,
+                 price: o.average_price || o.price || 0, type: o.order_type,
+                 status: o.status==='COMPLETE'?'COMPLETE':o.status==='REJECTED'?'REJECTED':o.status==='CANCELLED'?'CANCELLED':'PENDING' };
+      });
+    } else {
+      const tm = {1:'LIMIT',2:'MARKET',3:'STOP',4:'SL-M'};
+      const raw = (d.data && d.data.orderBook) || [];
+      orders = raw.map(function(o){
+        return { time: o.orderDateTime||'--',
+                 symbol: (o.symbol||'').replace('NSE:','').replace('-EQ',''),
+                 side: o.side===1?'BUY':'SELL', qty: o.qty,
+                 price: o.tradedPrice || o.limitPrice || 0, type: tm[o.type]||String(o.type),
+                 status: o.status==='2'?'COMPLETE':o.status==='4'?'REJECTED':'PENDING' };
+      });
     }
-    const ords = d.data.orderBook;
-    el.innerHTML = `<table>
-      <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th class="r">Qty</th><th class="r">Price</th><th>Type</th><th>Status</th></tr></thead>
-      <tbody>${ords.map(o=>{
-        const side = o.side===1?'BUY':'SELL';
-        const sc   = side==='BUY'?'sig-buy':'sig-sell';
-        const stmap={1:'LIMIT',2:'MARKET',3:'STOP',4:'STOP-LIMIT'};
-        return`<tr>
-          <td class="mono neu" style="font-size:11px">${o.orderDateTime||'—'}</td>
-          <td class="mono bold">${o.symbol?.replace('NSE:','').replace('-EQ','')}</td>
-          <td><span class="sig ${sc}">${side}</span></td>
-          <td class="r mono">${o.qty}</td>
-          <td class="r mono">${fmtN(o.tradedPrice||o.limitPrice||0)}</td>
-          <td class="mono neu" style="font-size:11px">${stmap[o.type]||o.type}</td>
-          <td><span class="badge ${o.status==='2'?'badge-green':o.status==='4'?'badge-red':'badge-yellow'}">${o.status==='2'?'FILLED':o.status==='4'?'REJECTED':'PENDING'}</span></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
-  } catch(e) { el.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+    if(!orders.length){ el.innerHTML = '<div class="empty">No orders today</div>'; return; }
+    let rows = '';
+    orders.forEach(function(o){
+      const stCls = o.status==='COMPLETE'?'badge-green':o.status==='REJECTED'?'badge-red':o.status==='CANCELLED'?'badge-gray':'badge-yellow';
+      rows += '<tr>' +
+        '<td class="mono neu" style="font-size:11px">' + o.time + '</td>' +
+        '<td class="mono bold">' + o.symbol + '</td>' +
+        '<td><span class="sig ' + (o.side==='BUY'?'sig-buy':'sig-sell') + '">' + o.side + '</span></td>' +
+        '<td class="r mono">' + o.qty + '</td>' +
+        '<td class="r mono">' + fmtN(o.price) + '</td>' +
+        '<td class="mono neu" style="font-size:11px">' + o.type + '</td>' +
+        '<td><span class="badge ' + stCls + '">' + o.status + '</span></td></tr>';
+    });
+    el.innerHTML = '<table><thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th class="r">Qty</th><th class="r">Price</th><th>Type</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  } catch(e){ el.innerHTML = '<div class="empty">' + e.message + '</div>'; }
 }
 
-// ── SCANNER ────────────────────────────────────
-async function runScan() {
+// ── SCANNER ──────────────────────────────────────────────────────
+async function runScan(){
   const el = document.getElementById('scanBody');
-  el.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Scanning F&O universe — please wait (~30s)…</div>';
-  const mode  = document.getElementById('scanMode').value;
-  const top_n = parseInt(document.getElementById('scanTop').value);
-  const runST = document.getElementById('runST').checked;
-  try {
+  el.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Scanning F&O universe... please wait</div>';
+  try{
     const r = await fetch('/api/scan', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({mode, top_n, supertrend: runST})
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        mode:       document.getElementById('scanMode').value,
+        top_n:      parseInt(document.getElementById('scanTop').value),
+        supertrend: document.getElementById('runST').checked
+      })
     });
     const d = await r.json();
-    if(!d.ok) { el.innerHTML = `<div class="empty">Error: ${d.error}</div>`; return; }
-    scanData = d.data;
+    if(!d.ok){ el.innerHTML = '<div class="empty">Error: ' + d.error + '</div>'; return; }
+    scanData = d.data || [];
     renderScanTable(scanData);
-  } catch(e) { el.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+  } catch(e){ el.innerHTML = '<div class="empty">' + e.message + '</div>'; }
 }
 
-function renderScanTable(data) {
+function renderScanTable(data){
   const el = document.getElementById('scanBody');
-  if(!data.length){ el.innerHTML='<div class="empty">No results</div>'; return; }
-  const maxVol = Math.max(...data.map(s=>s.volume));
-  el.innerHTML = `<table>
-    <thead><tr><th>#</th><th>Symbol</th><th class="r">LTP</th><th class="r">Chg%</th><th class="r">Volume</th>
-    <th>ST Signal</th><th class="r">Confidence</th><th class="r">P&L Prob</th><th class="r">Stop Loss</th><th class="r">Target</th><th>Action</th></tr></thead>
-    <tbody>${data.map((s,i)=>{
-      const pc = s.pct_change||0;
-      const st = s.supertrend||{};
-      const sig= st.signal||'—';
-      const sc = sig==='BUY'?'sig-buy':sig==='SELL'?'sig-sell':'sig-hold';
-      const vp = maxVol?Math.round(s.volume/maxVol*100):0;
-      const rankCls = i===0?'badge-yellow':i===1?'badge-gray':i===2?'badge-blue':'badge-gray';
-      return`<tr>
-        <td><span class="badge ${rankCls}">${i+1}</span></td>
-        <td><div class="mono bold">${s.symbol}</div><div style="font-size:10px;color:var(--t2)">${s.name}</div></td>
-        <td class="r mono">${fmtN(s.ltp)}</td>
-        <td class="r mono ${cls(pc)}" style="font-weight:700">${pc>0?'+':''}${pc.toFixed(2)}%</td>
-        <td class="r"><div class="mono" style="font-size:11px">${fmtV(s.volume)}</div>
-          <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px">
-            <div style="height:3px;width:${vp}%;background:var(--${pc>=0?'gain':'loss'});border-radius:2px"></div>
-          </div></td>
-        <td>${sig!=='—'?`<span class="sig ${sc}">${sig}</span>`:'<span class="neu mono" style="font-size:11px">No data</span>'}</td>
-        <td class="r mono ${st.confidence>=60?'up':st.confidence>=40?'warn':''}">${st.confidence!=null?st.confidence.toFixed(0)+'%':'—'}</td>
-        <td class="r mono ${st.pl_probability>=60?'up':st.pl_probability>=40?'warn':'dn'}">${st.pl_probability!=null?st.pl_probability.toFixed(0)+'%':'—'}</td>
-        <td class="r mono dn">${st.stop_loss?fmtN(st.stop_loss):'—'}</td>
-        <td class="r mono up">${st.take_profit?fmtN(st.take_profit):'—'}</td>
-        <td><div style="display:flex;gap:4px">
-          <button class="btn btn-success btn-sm" onclick="openOrderModal('${s.symbol}','BUY',${s.lot||1},${s.ltp},${JSON.stringify(st).replace(/"/g,"'")})">BUY</button>
-          <button class="btn btn-danger btn-sm" onclick="openOrderModal('${s.symbol}','SELL',${s.lot||1},${s.ltp},${JSON.stringify(st).replace(/"/g,"'")})">SELL</button>
-        </div></td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
+  if(!data.length){ el.innerHTML = '<div class="empty">No results</div>'; return; }
+  const maxVol = Math.max.apply(null, data.map(function(s){ return s.volume || 0; }));
+  let rows = '';
+  data.forEach(function(s, i){
+    const pc  = parseFloat(s.pct_change || 0);
+    const st  = s.supertrend || {};
+    const sig = st.signal || '--';
+    const sc  = sig==='BUY'?'sig-buy':sig==='SELL'?'sig-sell':'sig-hold';
+    const vp  = maxVol ? Math.round((s.volume||0)/maxVol*100) : 0;
+    const rk  = i===0?'badge-yellow':i===1?'badge-gray':i===2?'badge-blue':'badge-gray';
+    rows += '<tr>' +
+      '<td><span class="badge ' + rk + '">' + (i+1) + '</span></td>' +
+      '<td><div class="mono bold">' + s.symbol + '</div><div style="font-size:10px;color:var(--t2)">' + s.name + '</div></td>' +
+      '<td class="r mono">' + fmtN(s.ltp) + '</td>' +
+      '<td class="r mono ' + cls(pc) + '" style="font-weight:700">' + (pc>0?'+':'') + pc.toFixed(2) + '%</td>' +
+      '<td class="r"><div class="mono" style="font-size:11px">' + fmtV(s.volume) + '</div>' +
+        '<div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px">' +
+        '<div style="height:3px;width:' + vp + '%;background:var(--' + (pc>=0?'gain':'loss') + ');border-radius:2px"></div></div></td>' +
+      '<td>' + (sig!=='--' ? '<span class="sig ' + sc + '">' + sig + '</span>' : '--') + '</td>' +
+      '<td class="r mono">' + (st.confidence!=null ? st.confidence.toFixed(0)+'%' : '--') + '</td>' +
+      '<td class="r mono">' + (st.pl_probability!=null ? st.pl_probability.toFixed(0)+'%' : '--') + '</td>' +
+      '<td class="r mono dn">' + (st.stop_loss ? fmtN(st.stop_loss) : '--') + '</td>' +
+      '<td class="r mono up">' + (st.take_profit ? fmtN(st.take_profit) : '--') + '</td>' +
+      '<td><div style="display:flex;gap:4px">' +
+        '<button class="btn btn-success btn-sm" onclick="openOrderFromScan(' + i + ',\'BUY\')">BUY</button>' +
+        '<button class="btn btn-danger btn-sm"  onclick="openOrderFromScan(' + i + ',\'SELL\')">SELL</button>' +
+      '</div></td></tr>';
+  });
+  el.innerHTML = '<table><thead><tr>' +
+    '<th>#</th><th>Symbol</th><th class="r">LTP</th><th class="r">Chg%</th><th class="r">Volume</th>' +
+    '<th>Signal</th><th class="r">Conf</th><th class="r">P&amp;L Prob</th><th class="r">SL</th><th class="r">Target</th><th>Action</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
-// ── SUPERTREND ANALYSER ────────────────────────
-async function runST() {
+// ── SUPERTREND ────────────────────────────────────────────────────
+async function runST(){
   const sym = document.getElementById('stSymbol').value.trim().toUpperCase();
   if(!sym){ alert('Enter a symbol'); return; }
-  const period = document.getElementById('stPeriod').value;
-  const mult   = document.getElementById('stMult').value;
-  const el     = document.getElementById('stBody');
-  el.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Fetching historical data & computing…</div>';
-  try {
+  const el = document.getElementById('stBody');
+  el.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Computing...</div>';
+  try{
     const r = await fetch('/api/analyse', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({symbol:sym, period:parseInt(period), multiplier:parseFloat(mult)})
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        symbol:     sym,
+        period:     parseInt(document.getElementById('stPeriod').value),
+        multiplier: parseFloat(document.getElementById('stMult').value)
+      })
     });
     const d = await r.json();
-    if(!d.ok){ el.innerHTML=`<div class="empty">Error: ${d.error}</div>`; return; }
+    if(!d.ok){ el.innerHTML = '<div class="empty">Error: ' + d.error + '</div>'; return; }
     const s = d.data;
     const sc = s.signal==='BUY'?'sig-buy':s.signal==='SELL'?'sig-sell':'sig-hold';
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-        <div>
-          <div style="font-family:var(--mono);font-size:22px;font-weight:700">${sym}</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:2px">NSE F&O Derivative</div>
-        </div>
-        <div style="font-family:var(--mono);font-size:26px;font-weight:700">₹${fmtN(s.current_price)}</div>
-        <span class="sig ${sc}" style="font-size:14px;padding:6px 16px">${s.signal}</span>
-        <div style="margin-left:auto;text-align:right">
-          <div style="font-size:11px;color:var(--t2)">Confidence</div>
-          <div class="mono" style="font-size:20px;font-weight:700;color:var(--${s.confidence>=60?'gain':s.confidence>=40?'warn':'loss'})">${s.confidence.toFixed(0)}%</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:11px;color:var(--t2)">P&L Probability</div>
-          <div class="mono" style="font-size:20px;font-weight:700;color:var(--${s.pl_probability>=60?'gain':s.pl_probability>=40?'warn':'loss'})">${s.pl_probability.toFixed(0)}%</div>
-        </div>
-      </div>
-      <div class="st-grid">
-        <div class="st-stat"><div class="st-lbl">SuperTrend Line</div><div class="st-val">₹${fmtN(s.supertrend_val)}</div></div>
-        <div class="st-stat"><div class="st-lbl">ATR (Volatility)</div><div class="st-val">${fmtN(s.atr)}</div></div>
-        <div class="st-stat"><div class="st-lbl">RSI (14)</div><div class="st-val ${s.rsi<30?'up':s.rsi>70?'dn':'neu'}">${s.rsi.toFixed(1)}</div></div>
-        <div class="st-stat"><div class="st-lbl">Volume Ratio</div><div class="st-val ${s.volume_ratio>1.5?'up':s.volume_ratio<0.7?'dn':'neu'}">${s.volume_ratio.toFixed(2)}x</div></div>
-        <div class="st-stat"><div class="st-lbl">EMA ${document.getElementById('stPeriod').value} (Short)</div><div class="st-val">₹${fmtN(s.ema_short)}</div></div>
-        <div class="st-stat"><div class="st-lbl">EMA 21 (Long)</div><div class="st-val">₹${fmtN(s.ema_long)}</div></div>
-        <div class="st-stat"><div class="st-lbl">Stop Loss</div><div class="st-val dn">₹${fmtN(s.stop_loss)}</div></div>
-        <div class="st-stat"><div class="st-lbl">Take Profit (1:${s.risk_reward})</div><div class="st-val up">₹${fmtN(s.take_profit)}</div></div>
-      </div>
-      <div class="reason-list"><strong style="color:var(--t0);display:block;margin-bottom:6px;font-family:var(--mono);font-size:11px;letter-spacing:1px">ANALYSIS REASONS</strong>${s.reasons.map(r=>`<div>${r}</div>`).join('')}</div>
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <button class="btn btn-success" onclick="openOrderModal('${sym}','BUY',1,${s.current_price},${JSON.stringify(s).replace(/"/g,"'")})">▲ BUY ${sym}</button>
-        <button class="btn btn-danger"  onclick="openOrderModal('${sym}','SELL',1,${s.current_price},${JSON.stringify(s).replace(/"/g,"'")})">▼ SELL ${sym}</button>
-      </div>`;
-  } catch(e) { el.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+    const confColor = s.confidence>=60?'gain':s.confidence>=40?'warn':'loss';
+    const probColor = s.pl_probability>=60?'gain':s.pl_probability>=40?'warn':'loss';
+    // Store in orderCtx for direct BUY/SELL buttons
+    orderCtx = { sym: sym, side: 'BUY', qty: 1, price: s.current_price, stData: s };
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">' +
+        '<div><div style="font-family:var(--mono);font-size:22px;font-weight:700">' + sym + '</div>' +
+          '<div style="font-size:12px;color:var(--t2)">' + BROKER.toUpperCase() + ' F&O</div></div>' +
+        '<div style="font-family:var(--mono);font-size:24px;font-weight:700">Rs.' + fmtN(s.current_price) + '</div>' +
+        '<span class="sig ' + sc + '" style="font-size:14px;padding:6px 16px">' + s.signal + '</span>' +
+        '<div style="margin-left:auto;text-align:right"><div style="font-size:11px;color:var(--t2)">Confidence</div>' +
+          '<div class="mono" style="font-size:20px;font-weight:700;color:var(--' + confColor + ')">' + s.confidence.toFixed(0) + '%</div></div>' +
+        '<div style="text-align:right"><div style="font-size:11px;color:var(--t2)">P&amp;L Prob</div>' +
+          '<div class="mono" style="font-size:20px;font-weight:700;color:var(--' + probColor + ')">' + s.pl_probability.toFixed(0) + '%</div></div>' +
+      '</div>' +
+      '<div class="st-grid">' +
+        '<div class="st-stat"><div class="st-lbl">SuperTrend</div><div class="st-val">Rs.' + fmtN(s.supertrend_val) + '</div></div>' +
+        '<div class="st-stat"><div class="st-lbl">ATR</div><div class="st-val">' + fmtN(s.atr) + '</div></div>' +
+        '<div class="st-stat"><div class="st-lbl">RSI</div><div class="st-val ' + (s.rsi<30?'up':s.rsi>70?'dn':'neu') + '">' + s.rsi.toFixed(1) + '</div></div>' +
+        '<div class="st-stat"><div class="st-lbl">Vol Ratio</div><div class="st-val">' + s.volume_ratio.toFixed(2) + 'x</div></div>' +
+        '<div class="st-stat"><div class="st-lbl">EMA Short</div><div class="st-val">Rs.' + fmtN(s.ema_short) + '</div></div>' +
+        '<div class="st-stat"><div class="st-lbl">EMA Long</div><div class="st-val">Rs.' + fmtN(s.ema_long) + '</div></div>' +
+        '<div class="st-stat"><div class="st-lbl">Stop Loss</div><div class="st-val dn">Rs.' + fmtN(s.stop_loss) + '</div></div>' +
+        '<div class="st-stat"><div class="st-lbl">Target (1:' + s.risk_reward + ')</div><div class="st-val up">Rs.' + fmtN(s.take_profit) + '</div></div>' +
+      '</div>' +
+      '<div class="reason-list"><strong style="color:var(--t0);display:block;margin-bottom:6px;font-family:var(--mono);font-size:11px;letter-spacing:1px">ANALYSIS</strong>' +
+        s.reasons.map(function(r){ return '<div>' + r + '</div>'; }).join('') +
+      '</div>' +
+      '<div style="display:flex;gap:10px;margin-top:14px">' +
+        '<button class="btn btn-success" onclick="openSTOrder(\'BUY\')">BUY ' + sym + '</button>' +
+        '<button class="btn btn-danger"  onclick="openSTOrder(\'SELL\')">SELL ' + sym + '</button>' +
+      '</div>';
+  } catch(e){ el.innerHTML = '<div class="empty">' + e.message + '</div>'; }
 }
 
-// ── ORDER FLOW ──────────────────────────────────
-function openOrderModal(sym, side, qty, price, stData) {
-  orderCtx = {sym, side, qty, price, stData: typeof stData==='string'?JSON.parse(stData.replace(/'/g,'"')):stData};
-  const sc = side==='BUY'?'btn-success':'btn-danger';
-  const confirmBtn = document.getElementById('orderConfirmBtn');
-  confirmBtn.className = `btn ${sc}`;
-  confirmBtn.textContent = `${side==='BUY'?'▲':'▼'} Confirm ${side} Order`;
-  document.getElementById('orderModalTitle').textContent = `${side==='BUY'?'▲ BUY':'▼ SELL'} — ${sym}`;
-  document.getElementById('orderModalSub').textContent = `Place a ${side} order for ${sym}`;
-  document.getElementById('orderQty').value = qty;
-  const sig = orderCtx.stData?.signal||'';
-  const conflict = (side==='BUY'&&sig==='SELL')||(side==='SELL'&&sig==='BUY');
-  document.getElementById('orderWarn').textContent = conflict
-    ? `⚠ SuperTrend signal is "${sig}" but you're placing a ${side} order. Trade with caution.`
-    : sig ? `✓ SuperTrend signal is "${sig}" — aligned with your ${side} direction.` : '';
+// ── ORDER HELPERS ─────────────────────────────────────────────────
+// Open order from scan table — uses index to look up scanData (no inline JSON)
+function openOrderFromScan(idx, side){
+  const s = scanData[idx];
+  if(!s) return;
+  orderCtx = { sym: s.symbol, side: side, qty: s.lot||1, price: s.ltp, stData: s.supertrend||{} };
+  showOrderModal();
+}
+
+// Open order from SuperTrend panel
+function openSTOrder(side){
+  orderCtx.side = side;
+  showOrderModal();
+}
+
+// Open SELL from positions
+function openSellModal(sym, qty, price){
+  orderCtx = { sym: sym, side: 'SELL', qty: qty, price: price, stData: {} };
+  showOrderModal();
+}
+
+function showOrderModal(){
+  const s = orderCtx;
+  document.getElementById('orderModalTitle').textContent = s.side + ' -- ' + s.sym;
+  document.getElementById('orderModalSub').textContent   = BROKER.toUpperCase() + ' | ' + s.sym + ' | Market Order';
+  const cb = document.getElementById('orderConfirmBtn');
+  cb.className    = 'btn ' + (s.side==='BUY' ? 'btn-success' : 'btn-danger');
+  cb.textContent  = 'Confirm ' + s.side;
+  document.getElementById('orderQty').value = s.qty;
+  const st  = s.stData || {};
+  const sig = st.signal || '';
+  const conflict = (s.side==='BUY'&&sig==='SELL') || (s.side==='SELL'&&sig==='BUY');
+  const warnEl = document.getElementById('orderWarn');
+  if(conflict){ warnEl.style.display='block'; warnEl.textContent = 'Signal is ' + sig + ' but placing ' + s.side + '. Proceed with caution.'; }
+  else { warnEl.style.display = 'none'; }
   updateOrderQty();
   document.getElementById('orderModal').classList.add('show');
 }
 
-function updateOrderQty() {
-  const qty   = parseInt(document.getElementById('orderQty').value)||1;
-  const price = orderCtx.price||0;
-  const total = (qty*price).toFixed(2);
-  const sl    = orderCtx.stData?.stop_loss||0;
-  const tp    = orderCtx.stData?.take_profit||0;
-  document.getElementById('orderRows').innerHTML = `
-    <div class="mrow"><span class="mkey">Symbol</span><span class="mval">${orderCtx.sym} (NSE)</span></div>
-    <div class="mrow"><span class="mkey">Side</span><span class="mval ${orderCtx.side==='BUY'?'up':'dn'}">${orderCtx.side}</span></div>
-    <div class="mrow"><span class="mkey">LTP</span><span class="mval">₹${fmtN(price)}</span></div>
-    <div class="mrow"><span class="mkey">Stop Loss</span><span class="mval dn">${sl?'₹'+fmtN(sl):'None'}</span></div>
-    <div class="mrow"><span class="mkey">Target</span><span class="mval up">${tp?'₹'+fmtN(tp):'None'}</span></div>
-  `;
-  document.getElementById('orderApproxVal').textContent = `Approx value: ₹${parseFloat(total).toLocaleString('en-IN')} (${qty} shares @ ₹${fmtN(price)})`;
+function updateOrderQty(){
+  const qty   = parseInt(document.getElementById('orderQty').value) || 1;
+  const price = orderCtx.price || 0;
+  const st    = orderCtx.stData || {};
+  document.getElementById('orderRows').innerHTML =
+    '<div class="mrow"><span class="mkey">Symbol</span><span class="mval">' + orderCtx.sym + '</span></div>' +
+    '<div class="mrow"><span class="mkey">Broker</span><span class="mval">' + BROKER.toUpperCase() + '</span></div>' +
+    '<div class="mrow"><span class="mkey">LTP</span><span class="mval">Rs.' + fmtN(price) + '</span></div>' +
+    '<div class="mrow"><span class="mkey">Stop Loss</span><span class="mval dn">' + (st.stop_loss?'Rs.'+fmtN(st.stop_loss):'--') + '</span></div>' +
+    '<div class="mrow"><span class="mkey">Target</span><span class="mval up">' + (st.take_profit?'Rs.'+fmtN(st.take_profit):'--') + '</span></div>';
+  document.getElementById('orderApproxVal').textContent =
+    'Approx: Rs.' + (qty*price).toLocaleString('en-IN',{maximumFractionDigits:0}) + ' (' + qty + ' x Rs.' + fmtN(price) + ')';
 }
 
-async function confirmOrder() {
+async function confirmOrder(){
   const btn = document.getElementById('orderConfirmBtn');
-  btn.disabled = true; btn.textContent = 'Placing…';
-  const qty   = parseInt(document.getElementById('orderQty').value)||1;
-  const ptype = document.getElementById('orderPtype').value;
-  const sl    = orderCtx.stData?.stop_loss||0;
-  const tp    = orderCtx.stData?.take_profit||0;
-  try {
+  btn.disabled = true; btn.textContent = 'Placing...';
+  try{
+    const st = orderCtx.stData || {};
     const r = await fetch('/api/order', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        symbol: orderCtx.sym, side: orderCtx.side, qty,
-        order_type:'MARKET', product_type:ptype,
-        stop_loss:sl, take_profit:tp, price:orderCtx.price,
-        signal_data: orderCtx.stData,
+        symbol:       orderCtx.sym,
+        side:         orderCtx.side,
+        qty:          parseInt(document.getElementById('orderQty').value) || 1,
+        order_type:   'MARKET',
+        product_type: document.getElementById('orderPtype').value,
+        stop_loss:    st.stop_loss  || 0,
+        take_profit:  st.take_profit|| 0,
+        price:        orderCtx.price,
+        signal_data:  st
       })
     });
     const d = await r.json();
     closeModal('orderModal');
-    if(d.ok) { showToast(`✓ ${orderCtx.side} order placed for ${orderCtx.sym} — ID: ${d.order_id}`, 'success'); loadOrders(); loadPositions(); }
-    else     { showToast(`✗ Order failed: ${d.error}`, 'error'); }
-  } catch(e) { showToast('Network error: '+e.message, 'error'); }
+    if(d.ok){ showToast('Order placed: ' + orderCtx.sym + ' ' + d.order_id, 'success'); loadOrders(); loadPositions(); }
+    else     { showToast('Failed: ' + d.error, 'error'); }
+  } catch(e){ showToast('Error: ' + e.message, 'error'); }
   btn.disabled = false;
 }
 
-// ── BULK ALLOCATION ─────────────────────────────
-function bulkAlloc() {
+// ── BULK ALLOCATION ───────────────────────────────────────────────
+function bulkAlloc(){
   if(!scanData.length){ alert('Run a scan first'); return; }
   document.getElementById('bulkCount').textContent = Math.min(5, scanData.length);
   calcBulk();
   document.getElementById('bulkModal').classList.add('show');
 }
-function calcBulk() {
-  const funds = parseFloat(document.getElementById('bulkFunds').value)||100000;
-  const top   = scanData.slice(0,5);
+function calcBulk(){
+  const funds = parseFloat(document.getElementById('bulkFunds').value) || 100000;
+  const top   = scanData.slice(0, 5);
   const per   = funds / top.length;
-  const grid  = document.getElementById('bulkAllocGrid');
-  grid.innerHTML = top.map((s,i)=>{
-    const price = s.ltp||1;
-    const lot   = s.lot||1;
-    const lots  = Math.max(1, Math.floor(per/price/lot));
-    const qty   = lots*lot;
-    const val   = (qty*price).toFixed(0);
-    const st    = s.supertrend||{};
+  let grid = '';
+  top.forEach(function(s, i){
+    const price = s.ltp || 1, lot = s.lot || 1;
+    const lots  = Math.max(1, Math.floor(per / price / lot));
+    const qty   = lots * lot;
+    const st    = s.supertrend || {};
     const sc    = st.signal==='BUY'?'sig-buy':st.signal==='SELL'?'sig-sell':'sig-hold';
-    return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">
-      <div style="font-size:10px;color:var(--t2);font-family:var(--mono)">#${i+1}</div>
-      <div style="font-family:var(--mono);font-weight:700;font-size:14px;margin:2px 0">${s.symbol}</div>
-      <div style="font-size:12px;color:var(--t1)">₹${fmtN(price)} · ${st.signal?`<span class="sig ${sc}" style="font-size:9px">${st.signal}</span>`:'—'}</div>
-      <div style="font-size:11px;color:var(--acc);font-family:var(--mono);margin-top:4px">${lots} lot(s) · ${qty} shares</div>
-      <div style="font-size:11px;color:var(--t2);font-family:var(--mono)">≈ ₹${parseFloat(val).toLocaleString('en-IN')}</div>
-    </div>`;
-  }).join('');
-  const totalVal = top.reduce((a,s)=>{
-    const price=s.ltp||1; const lot=s.lot||1;
-    const lots=Math.max(1,Math.floor(per/price/lot));
-    return a+lots*lot*price;
-  },0);
-  document.getElementById('bulkSummary').textContent =
-    `Total: ₹${totalVal.toLocaleString('en-IN')} across ${top.length} stocks · ₹${per.toLocaleString('en-IN',{maximumFractionDigits:0})} per stock`;
+    grid += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">' +
+      '<div style="font-size:10px;color:var(--t2);font-family:var(--mono)">#' + (i+1) + ' ' + BROKER.toUpperCase() + '</div>' +
+      '<div style="font-family:var(--mono);font-weight:700;font-size:14px;margin:2px 0">' + s.symbol + '</div>' +
+      '<div style="font-size:12px;color:var(--t1)">Rs.' + fmtN(price) + (st.signal?' <span class="sig '+sc+'" style="font-size:9px">'+st.signal+'</span>':'') + '</div>' +
+      '<div style="font-size:11px;color:var(--acc);font-family:var(--mono);margin-top:4px">' + lots + ' lot(s) ' + qty + ' shares</div>' +
+      '<div style="font-size:11px;color:var(--t2);font-family:var(--mono)">Rs.' + (qty*price).toLocaleString('en-IN',{maximumFractionDigits:0}) + '</div>' +
+      '</div>';
+  });
+  document.getElementById('bulkAllocGrid').innerHTML = grid;
+  const tv = top.reduce(function(a,s){ const p=s.ltp||1,l=s.lot||1; return a+Math.max(1,Math.floor(per/p/l))*l*p; }, 0);
+  document.getElementById('bulkSummary').textContent = 'Total: Rs.' + tv.toLocaleString('en-IN',{maximumFractionDigits:0}) + ' across ' + top.length + ' stocks';
 }
-async function confirmBulk() {
-  const funds = parseFloat(document.getElementById('bulkFunds').value)||100000;
-  const ptype = document.getElementById('bulkPtype').value;
-  const btn   = document.querySelector('#bulkModal .btn-success');
-  btn.disabled=true; btn.textContent='Placing orders…';
-  try {
+async function confirmBulk(){
+  const btn = document.querySelector('#bulkModal .btn-success');
+  btn.disabled = true; btn.textContent = 'Placing...';
+  try{
     const r = await fetch('/api/bulk-order', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({stocks: scanData.slice(0,5), funds, product_type:ptype})
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ stocks: scanData.slice(0,5),
+        funds: parseFloat(document.getElementById('bulkFunds').value)||100000,
+        product_type: document.getElementById('bulkPtype').value })
     });
     const d = await r.json();
     closeModal('bulkModal');
-    if(d.ok) showToast(`✓ ${d.count} orders placed`, 'success');
-    else     showToast(`✗ ${d.error}`, 'error');
+    if(d.ok) showToast(d.count + ' orders placed', 'success');
+    else     showToast(d.error, 'error');
     loadOrders();
-  } catch(e) { showToast('Error: '+e.message,'error'); }
-  btn.disabled=false;
+  } catch(e){ showToast(e.message, 'error'); }
+  btn.disabled = false;
 }
 
-// ── UTILS ───────────────────────────────────────
+// ── UTILS ─────────────────────────────────────────────────────────
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
-function setText(id, val){ const el=document.getElementById(id); if(el) el.textContent=val; }
-function showToast(msg, type='info') {
-  const w = document.getElementById('toastWrap') || (() => {
-    const d=document.createElement('div');
-    d.id='toastWrap';d.style.cssText='position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px';
-    document.body.appendChild(d);return d;
-  })();
+function setText(id, v){ const e = document.getElementById(id); if(e) e.textContent = v; }
+function showToast(msg, type){
+  const colors = {success:'var(--gain)', error:'var(--loss)', info:'var(--acc)'};
+  let w = document.getElementById('_tw');
+  if(!w){
+    w = document.createElement('div'); w.id = '_tw';
+    w.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px';
+    document.body.appendChild(w);
+  }
   const t = document.createElement('div');
-  const colors = {success:'var(--gain)',error:'var(--loss)',info:'var(--acc)'};
-  t.style.cssText=`background:var(--bg2);border:1px solid var(--border2);border-left:3px solid ${colors[type]||colors.info};border-radius:10px;padding:12px 18px;font-size:13px;min-width:280px;box-shadow:0 8px 32px #00000060;animation:slideIn .3s ease`;
-  t.textContent = msg;
-  w.appendChild(t);
-  setTimeout(()=>t.remove(), 4500);
+  t.style.cssText = 'background:var(--bg2);border:1px solid var(--border2);border-left:3px solid ' + (colors[type]||colors.info) + ';border-radius:10px;padding:12px 18px;font-size:13px;min-width:280px;box-shadow:0 8px 32px #0006';
+  t.textContent = msg; w.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 4500);
 }
 
-// Add slideIn animation
-const style = document.createElement('style');
-style.textContent = '@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}';
-document.head.appendChild(style);
-
-// ── INIT ────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────────────
+loadStatus();
 loadIndices();
 loadFunds();
 loadPositions();
